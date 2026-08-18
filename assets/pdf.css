@@ -1,0 +1,137 @@
+@page {
+  size: A4;
+  margin: 16mm 15mm 16mm 15mm;
+}
+
+:root {
+  --ink: #1a1a1a;
+  --muted: #555;
+  --rule: #d5d5d5;
+  --accent: #0b6ea8;
+  --code-bg: #f5f6f7;
+  --note-bg: #eef6fb;
+  --warn-bg: #fdf1e7;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  font-family: "DejaVu Sans", "Liberation Sans", Arial, sans-serif;
+  font-size: 10.3pt;
+  line-height: 1.45;
+  color: var(--ink);
+  margin: 0;
+  hyphens: auto;
+}
+
+h1 {
+  font-size: 19pt;
+  line-height: 1.2;
+  margin: 0 0 2mm 0;
+  color: var(--accent);
+  border-bottom: 2px solid var(--accent);
+  padding-bottom: 2mm;
+}
+
+h2 {
+  font-size: 13pt;
+  margin: 6mm 0 2mm 0;
+  color: var(--accent);
+  border-bottom: 1px solid var(--rule);
+  padding-bottom: 1mm;
+  break-after: avoid;
+}
+
+h3 {
+  font-size: 11pt;
+  margin: 4mm 0 1.5mm 0;
+  color: #333;
+  break-after: avoid;
+}
+
+h1 + p em, .subtitle {
+  color: var(--muted);
+}
+
+p { margin: 0 0 2.4mm 0; }
+
+ul, ol { margin: 0 0 2.8mm 0; padding-left: 6mm; }
+li { margin-bottom: 1.1mm; }
+li > ul, li > ol { margin-top: 1.1mm; margin-bottom: 0; }
+
+code {
+  font-family: "DejaVu Sans Mono", "Liberation Mono", Consolas, monospace;
+  font-size: 0.88em;
+  background: var(--code-bg);
+  padding: 0.3mm 1mm;
+  border-radius: 2px;
+  border: 1px solid #e3e5e7;
+}
+
+pre {
+  background: var(--code-bg);
+  border: 1px solid #dcdfe2;
+  border-left: 3px solid var(--accent);
+  border-radius: 3px;
+  padding: 2mm 2.5mm;
+  margin: 0 0 3mm 0;
+  overflow-x: hidden;
+  break-inside: avoid;
+}
+
+pre code {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 8.6pt;
+  line-height: 1.35;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+blockquote {
+  margin: 0 0 3mm 0;
+  padding: 2mm 3mm;
+  background: var(--note-bg);
+  border-left: 3px solid var(--accent);
+  border-radius: 2px;
+  break-inside: avoid;
+}
+blockquote p { margin: 0; }
+blockquote p + p { margin-top: 1.5mm; }
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0 0 3mm 0;
+  font-size: 9.2pt;
+  break-inside: avoid;
+}
+th, td {
+  border: 1px solid var(--rule);
+  padding: 1.4mm 2mm;
+  text-align: left;
+  vertical-align: top;
+}
+th { background: #eceff1; font-weight: 600; }
+tr:nth-child(even) td { background: #fafbfc; }
+td code, th code { font-size: 0.85em; }
+
+hr {
+  border: none;
+  border-top: 1px solid var(--rule);
+  margin: 4mm 0;
+}
+
+a { color: var(--accent); text-decoration: none; }
+
+.page-break { break-after: page; }
+
+/* Pygments (codehilite) — palette sobre, lisible en niveaux de gris */
+.codehilite .k, .codehilite .kn, .codehilite .kd { color: #0b5394; font-weight: 600; }
+.codehilite .nb, .codehilite .nf { color: #7b1fa2; }
+.codehilite .s, .codehilite .s1, .codehilite .s2 { color: #1b7a3d; }
+.codehilite .c, .codehilite .c1, .codehilite .cm { color: #6d7278; font-style: italic; }
+.codehilite .o { color: #a4562a; }
+.codehilite .m, .codehilite .mi { color: #a4562a; }
+.codehilite .err { border: none; }
