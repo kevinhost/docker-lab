@@ -11,6 +11,8 @@
   --code-bg: #f5f6f7;
   --note-bg: #eef6fb;
   --warn-bg: #fdf1e7;
+  --podman-bg: #f4eefb;
+  --domain-bg: #eef7f1;
 }
 
 * { box-sizing: border-box; }
@@ -99,6 +101,31 @@ blockquote {
 }
 blockquote p { margin: 0; }
 blockquote p + p { margin-top: 1.5mm; }
+
+/* Encadrés typés (voir tools/build_pdf.py : `> **Étiquette** — texte`) */
+.callout {
+  position: relative;
+  padding-top: 5.2mm;
+}
+.callout::before {
+  content: attr(data-label);
+  position: absolute;
+  top: 1.2mm;
+  left: 3mm;
+  font-size: 7.2pt;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--callout-ink);
+}
+.callout-note   { --callout-ink: var(--accent); background: var(--note-bg); border-left-color: var(--accent); }
+.callout-warn   { --callout-ink: #b3541e; background: var(--warn-bg); border-left-color: #d9731f; }
+.callout-podman { --callout-ink: #5a3d9a; background: var(--podman-bg); border-left-color: #892ca0; }
+.callout-domain { --callout-ink: #2d6a4f; background: var(--domain-bg); border-left-color: #2d6a4f; }
+.callout-domain::before {
+  content: "\2192\00a0" attr(data-label);
+}
+.callout-domain p, .callout-podman p { font-size: 9.6pt; }
 
 table {
   width: 100%;

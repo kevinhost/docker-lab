@@ -1,0 +1,6 @@
+{
+  "name": "web",
+  "version": "1.0.0",
+  "description": "Faux projet Angular : seul le nom des fichiers compte, le build est simule dans le Dockerfile.",
+  "scripts": { "build": "echo 'ng build (simule)'" }
+}

@@ -1,35 +1,53 @@
-# CLAUDE.md — Série de labos Docker (CLI)
+# CLAUDE.md — Série de labos Docker (CLI), pratiqués avec Podman sur WSL
 
-Ce dépôt contient une série de labos d'auto-formation Docker, en français, orientés
-**ligne de commande**. Objectif final : comprendre Docker tel qu'il est utilisé en
-entreprise sur une stack **Spring Boot + Angular + PostgreSQL**, tout en gardant chaque
-labo **simple et centré sur Docker** (jamais sur Java, ni sur TypeScript).
+Ce dépôt contient une série de labos d'auto-formation Docker, orientés **ligne de
+commande**, en **trois langues** (FR, NL-BE, EN). Objectif final : comprendre Docker tel
+qu'il est utilisé en entreprise sur une stack **Spring Boot + Angular + PostgreSQL**, tout
+en gardant chaque labo **simple et centré sur les conteneurs** (jamais sur Java, ni sur
+TypeScript). **Le moteur utilisé en pratique est Podman (rootless) dans une distribution
+Ubuntu sous WSL 2** ; la théorie enseigne le vocabulaire Docker et explique à chaque fois
+ce que Podman fait différemment.
 
 ---
 
 ## 1. Public et objectif
 
-- **Apprenant** : développeur qui connaît le terminal Linux, découvre Docker.
-- **But** : maîtriser les concepts fondamentaux + le vocabulaire employé en entreprise.
+- **Apprenant** : développeur qui connaît le terminal Linux, découvre Docker, travaille
+  sur un poste Windows avec WSL 2 + Ubuntu + `apt install podman`.
+- **But** : maîtriser les concepts fondamentaux + le vocabulaire employé en entreprise,
+  avec Podman comme moteur (CLI identique à Docker).
 - **Non-but** : apprendre Kubernetes, Swarm, Java ou Angular. On y fait référence, on ne
   les enseigne pas.
+- **Ton** : les pages de théorie doivent être **intéressantes** — un fil narratif, une
+  anecdote historique (Docker 2013, OCI 2015, Podman 2018, WSL 2…), des « pourquoi »,
+  pas une documentation de référence.
 
 ## 2. Format imposé (à respecter pour CHAQUE labo)
 
-Chaque labo produit **4 PDF**, générés à partir de 4 fichiers Markdown :
+Chaque labo existe en **trois langues** — `fr/` (français), `nl/` (néerlandais de
+Belgique), `en/` (anglais) — et chaque langue produit **4 PDF**, générés à partir de
+4 fichiers Markdown (noms de fichiers traduits, numérotation identique) :
 
-| Fichier source        | PDF produit           | Rôle |
-|-----------------------|-----------------------|------|
-| `01-theorie.md`       | `01-theorie.pdf`      | Cours théorique à apprendre. **4 à 5 pages max.** Peut contenir des commandes en illustration, mais **pas d'exercice**. |
-| `02-questions.md`     | `02-questions.pdf`    | Questions de contrôle sur la théorie. **Pas faciles** : elles doivent prouver la compréhension, pas la mémorisation. |
-| `03-reponses.md`      | `03-reponses.pdf`     | Corrigé détaillé : réponse + explication + nuance + exemple concret pour chaque question. |
-| `04-labo-pratique.md` | `04-labo-pratique.pdf`| Manipulation guidée au terminal, avec vérifications attendues. |
+| FR | NL | EN | Rôle |
+|----|----|----|------|
+| `01-theorie.md` | `01-theorie.md` | `01-theory.md` | Cours théorique. **5 pages max.** Commandes en illustration, **pas d'exercice**. |
+| `02-questions.md` | `02-vragen.md` | `02-questions.md` | Questions de contrôle. **Pas faciles** : compréhension, pas mémorisation. |
+| `03-reponses.md` | `03-antwoorden.md` | `03-answers.md` | Corrigé : réponse + mécanisme + nuance + exemple vérifiable. |
+| `04-labo-pratique.md` | `04-praktijklabo.md` | `04-hands-on-lab.md` | Manipulation guidée au terminal, sorties réelles. |
+
+**Le français est la version maîtresse** : on écrit et on valide en FR, puis on traduit
+NL et EN en gardant la même structure, les mêmes commandes et les mêmes sorties. Les
+termes techniques sans bon équivalent restent en anglais dans les trois langues (*image*,
+*layer*, *registry*, *bind mount*, *build context*, *rootless*, *digest*…). Le NL est un
+néerlandais standard lisible en Belgique (tutoiement « je », pas de flandricismes
+gratuits).
 
 Plus, si nécessaire :
 
 - `files/` : fichiers de base fournis pour le labo pratique (Dockerfile, compose,
-  sources minimales…). Quand la création du fichier **est** l'exercice, le labo demande
-  à l'apprenant de l'écrire ; sinon le fichier est fourni ici, prêt à l'emploi.
+  sources minimales…), **communs aux trois langues** (commentaires en français simple ou
+  neutres). Quand la création du fichier **est** l'exercice, le labo demande à
+  l'apprenant de l'écrire ; sinon le fichier est fourni ici, prêt à l'emploi.
 
 ### Arborescence
 
@@ -38,14 +56,14 @@ docker-lab/
 ├── CLAUDE.md
 ├── README.md                  # sommaire + mode d'emploi
 ├── build.sh                   # génère tous les PDF
-├── tools/build_pdf.py         # Markdown -> HTML -> PDF (Chrome headless)
+├── tools/build_pdf.py         # Markdown -> HTML -> PDF (Chrome headless), encadrés typés
+├── tools/podman-sandbox.sh    # Podman rootless de test dans un conteneur Docker privilégié
 ├── assets/pdf.css             # mise en page des PDF
 └── labs/
     ├── 01-conteneurs-et-architecture/
-    │   ├── 01-theorie.md      (+ .pdf)
-    │   ├── 02-questions.md    (+ .pdf)
-    │   ├── 03-reponses.md     (+ .pdf)
-    │   ├── 04-labo-pratique.md(+ .pdf)
+    │   ├── fr/  01-theorie.md 02-questions.md 03-reponses.md 04-labo-pratique.md (+ .pdf)
+    │   ├── nl/  01-theorie.md 02-vragen.md 03-antwoorden.md 04-praktijklabo.md   (+ .pdf)
+    │   ├── en/  01-theory.md 02-questions.md 03-answers.md 04-hands-on-lab.md    (+ .pdf)
     │   └── files/
     └── ...
 ```
@@ -53,8 +71,9 @@ docker-lab/
 ## 3. Chaîne de génération des PDF
 
 ```bash
-./build.sh              # tout reconstruire
-./build.sh labs/03-*    # reconstruire un labo
+./build.sh                 # tout reconstruire
+./build.sh labs/03-*       # reconstruire un labo (trois langues)
+./build.sh labs/03-*/nl    # une seule langue
 ```
 
 - `build.sh` crée `.venv/` au besoin (`markdown`, `pygments`) puis lance
@@ -63,8 +82,10 @@ docker-lab/
   `sane_lists`, `codehilite`) → PDF via `google-chrome --headless --print-to-pdf`.
 - **Ne jamais éditer un `.pdf` à la main** : il est régénéré. La source de vérité est le
   `.md`.
-- Après génération, **vérifier le nombre de pages** de `01-theorie.pdf` (le script
-  l'affiche). S'il dépasse 5, raccourcir le Markdown — pas la CSS.
+- Après génération, **vérifier le nombre de pages** de chaque `01-*.pdf` (le script
+  l'affiche et marque `TROP LONG`). S'il dépasse 5, raccourcir le Markdown — pas la CSS.
+  `pdftotext -f 6 -l 6 fichier.pdf -` montre ce qui déborde. Un texte FR de ~1700 mots
+  hors code tient ; les traductions NL/EN doivent être vérifiées séparément.
 
 ### Conventions Markdown utilisées par le gabarit
 
@@ -72,8 +93,19 @@ docker-lab/
 - `## Section` : commence **toujours** une nouvelle section ; pas de saut de page forcé
   sauf `<div class="page-break"></div>`.
 - Blocs de code : toujours annotés (` ```bash `, ` ```dockerfile `, ` ```yaml `).
-- Encadrés : `> **À retenir** — …` pour les points clés, `> **Piège** — …` pour les
-  erreurs classiques. Le CSS les met en valeur.
+- Encadrés : une citation dont la première ligne commence par une **étiquette en gras
+  suivie d'un tiret cadratin** (`> **Étiquette** — …`) devient un encadré typé
+  (`tools/build_pdf.py`, `assets/pdf.css`) :
+  - `À retenir` / `Onthouden` / `Remember` → encadré bleu (point clé) ;
+  - `Piège` / `Valkuil` / `Pitfall` → encadré orange (erreur classique) ;
+  - `Podman` → encadré violet : ce que Podman fait différemment de Docker ;
+  - **toute autre étiquette** → encadré vert « domaine », avec l'étiquette affichée en
+    petit label : `Linux`, `Java`, `Réseau` / `Netwerk` / `Network`, `Windows / WSL`,
+    `Sécurité` / `Beveiliging` / `Security`, `Histoire` / `Geschiedenis` / `History`,
+    `Spring Boot`, `Angular`, `HTTP`, `Linux / Shell`… **Chaque fois que la théorie
+    s'appuie sur une notion extérieure aux conteneurs, on l'explique en 3-5 lignes dans
+    un tel encadré**, plutôt que de supposer qu'elle est connue.
+  - Un encadré = un seul paragraphe. Deux à cinq encadrés par page de théorie, pas plus.
 - Tableaux : privilégiés pour les comparaisons (commande / effet / quand l'utiliser).
 
 ## 4. Règles de rédaction
@@ -86,7 +118,11 @@ docker-lab/
 - Toujours expliquer le **pourquoi**, pas seulement le comment.
 - Un lien explicite avec l'entreprise dans une courte section « En entreprise » :
   comment ce concept se traduit sur une stack Spring Boot / Angular.
-- 4-5 pages A4 = environ 1300-1700 mots + code.
+- **Podman à chaque labo** : au moins un encadré `Podman` (pas de daemon, rootless,
+  `conmon`, noms complets, `--tls-verify`, Buildah, Quadlet, pods…) et, quand une
+  commande ou une sortie diffère de Docker, le dire — sans transformer le cours en
+  comparatif. On enseigne Docker, on pratique Podman.
+- 5 pages A4 = environ 1500-1800 mots hors blocs de code, encadrés compris.
 
 **Questions**
 - 10 à 14 questions, numérotées, difficulté croissante.
@@ -106,9 +142,16 @@ docker-lab/
   phrase d'explication.
 - Toujours terminer par une section « Nettoyage » (`docker rm`, `docker rmi`,
   `docker system prune`) pour ne pas laisser la machine encombrée.
-- Tout doit tourner sur **une seule machine Linux avec Docker Engine**, sans compte
-  payant, sans cloud, avec des images publiques légères (`alpine`, `nginx:alpine`,
-  `postgres:16-alpine`, `eclipse-temurin`, `node:22-alpine`, `httpd:alpine`).
+- Tout doit tourner dans **une distribution Ubuntu sous WSL 2 avec Podman rootless**
+  (`apt install podman`, `systemd=true` dans `/etc/wsl.conf`), sans compte payant, sans
+  cloud, avec des images publiques légères (`alpine`, `nginx:alpine`,
+  `postgres:16-alpine`, `eclipse-temurin`, `node:22-alpine`, `registry:2`).
+- Les commandes s'écrivent `podman …` ; les noms d'images dans les Dockerfiles et les
+  scripts sont **complets** (`docker.io/library/…`) ; les noms courts à alias
+  (`alpine`, `nginx`, `debian`, `postgres`, `registry`, `node`) sont tolérés en ligne de
+  commande. Les nettoyages utilisent `podman rm -f -t 0` (sinon 10 s d'attente).
+- Ce qui est propre à WSL (kernel `-microsoft-standard-WSL2`, `localhost` forwarding vers
+  Windows, `.wslconfig`, `wsl --shutdown`) est signalé dans un encadré `Windows / WSL`.
 - Les applis d'exemple sont **minimales et jetables** : un JAR « faux Spring Boot »
   écrit en 20 lignes, un `index.html` pour Angular. On simule la forme, pas le contenu.
 
@@ -142,38 +185,58 @@ La même stack fictive traverse la série, en restant triviale :
 Elle apparaît par morceaux dès le labo 04 et est complète au labo 09. Aucun labo ne doit
 exiger de compiler un vrai projet Maven ou npm : trop lent, hors sujet.
 
-## 7. Contraintes de la machine de l'apprenant (vérifiées)
+## 7. Contraintes des machines (vérifiées)
 
-- **Docker Engine 29.x sur Linux natif**, daemon accessible sans `sudo`.
-- **D'autres stacks tournent sur cette machine** (une stack Supabase, entre autres). Donc :
-  **aucun labo ne doit proposer `docker system prune`, `docker image prune -a`,
-  `docker container prune` ni `docker volume prune` sans réserve.** Le nettoyage se fait
-  **nommément** (`docker rm -f <noms>`), ou avec un `--filter` explicite. Le sujet
-  `prune` est traité au labo 10, avec les avertissements qui vont avec.
-- **Docker 29 a supprimé le champ `.NetworkSettings.IPAddress`** de premier niveau dans
-  `docker inspect`. Utiliser `.NetworkSettings.Networks.<réseau>.IPAddress`. Vérifier de
-  la même façon tout champ de `inspect` avant de l'écrire dans un labo.
-- **Le magasin d'images est celui de containerd** (`docker info` → `Storage Driver:
-  overlayfs`, `driver-type: io.containerd.snapshotter.v1`). Deux conséquences pour les
-  labos :
-  - `docker images` n'affiche **plus** les colonnes `REPOSITORY / TAG / SIZE` mais
-    `IMAGE / ID / DISK USAGE / CONTENT SIZE / EXTRA`. Pour retrouver la présentation
-    classique des tutoriels : `docker images --format 'table {{.Repository}}\t{{.Tag}}\t
-    {{.ID}}\t{{.Size}}'`. Toujours montrer les deux dans les labos.
-  - Les **images *dangling*** n'apparaissent quasiment plus après une reconstruction sur
-    le même tag (`--filter dangling=true` renvoie souvent vide). Ne pas bâtir d'exercice
-    qui repose sur leur apparition ; les expliquer comme un concept, avec la réserve.
-- Toute commande écrite dans un `04-labo-pratique.md` doit avoir été **exécutée** ici, et
-  les sorties citées dans le texte doivent être les sorties réelles (tailles, statuts,
-  messages d'erreur).
+**Machine de l'apprenant (cible des labos)** : Windows + WSL 2 + Ubuntu + Podman ≥ 4.9
+rootless (sorties de référence produites avec Podman 5.8). Conséquences :
+
+- **Pas de daemon** : `podman version` n'a qu'un bloc `Client` ; `--restart` ne survit
+  pas à `wsl --shutdown` ; `podman rm -f` attend 10 s sans `-t 0` ; `stop` affiche
+  `StopSignal SIGTERM failed … resorting to SIGKILL`.
+- **Rootless** : `root` du conteneur = UID de l'utilisateur (`podman top … user,huser`,
+  `podman unshare cat /proc/self/uid_map`) ; ports < 1024 refusés (`pasta failed …
+  Permission denied`) ; réseau par défaut `pasta` → `.NetworkSettings.IPAddress` **vide**
+  (utiliser `--network podman` pour obtenir `10.88.0.x`) ; `--memory` et `podman stats`
+  exigent la délégation cgroup v2 par systemd.
+- **Images** : `podman images` affiche les colonnes classiques `REPOSITORY/TAG/IMAGE ID/
+  SIZE`, les noms **complets** (`docker.io/library/…`, `localhost/…`), et les images
+  *dangling* apparaissent bien après un rebuild sur le même tag. Les tailles diffèrent
+  de Docker (non compressées) : `alpine` 8.7 MB, `nginx:alpine` 64.2 MB,
+  `eclipse-temurin:21-jre-alpine` 209 MB, `21-jdk` 488 MB, `node:22-alpine` 167 MB.
+- **Registry local** : `podman push localhost:5000/...` échoue sans `--tls-verify=false`
+  (`http: server gave HTTP response to HTTPS client`).
+- **Build** : sortie `STEP x/y`, `--> Using cache`, `[1/2] STEP …` en multi-stage, pas
+  de ligne `transferring context`, `# syntax=` ignoré, `--mount=type=cache|secret`
+  supportés, `--target`, `--build-context`.
+- **Nettoyage** : jamais `podman system prune`, `image prune -a`, `container prune` ni
+  `volume prune` sans réserve dans un labo ; on supprime **nommément**. `prune` est
+  traité au labo 10 avec les avertissements.
+
+**Machine de rédaction (celle-ci)** : Ubuntu natif avec Docker Engine 29, **sans Podman
+installé et sans `sudo`**. Pour exécuter réellement les commandes, utiliser
+`tools/podman-sandbox.sh` (Podman 5.8 rootless dans un conteneur Docker privilégié,
+cgroups délégués, `unqualified-search-registries = ["docker.io"]`,
+`ip_unprivileged_port_start=1024`). Ce que le bac à sable **ne** reproduit **pas** :
+le noyau WSL (`uname -r` donne celui de l'hôte), `systemd` (cgroupManager = `cgroupfs`),
+la plage `/etc/subuid` d'Ubuntu (`100000:65536` — le bac à sable a `1001:64535`, donc
+`HUSER` d'un UID 1000 vaut `100999` sur WSL mais `1001` dans le bac à sable), Quadlet.
+Ces valeurs sont écrites « telles que sur WSL » dans les labos et signalées comme telles.
+
+- Toute commande écrite dans un `04-*.md` doit avoir été **exécutée** dans le bac à
+  sable (ou sur un vrai WSL), et les sorties citées doivent être les sorties réelles
+  (tailles, statuts, messages d'erreur).
 
 ## 8. Checklist avant de considérer un labo terminé
 
-- [ ] Les 4 `.md` existent et respectent le plan de la section 4.
-- [ ] Les 4 `.pdf` sont générés et `01-theorie.pdf` fait ≤ 5 pages.
+- [ ] Les 4 `.md` existent **dans les trois langues** (`fr/`, `nl/`, `en/`) et
+      respectent le plan de la section 4.
+- [ ] Les 12 `.pdf` sont générés et chaque `01-*.pdf` fait ≤ 5 pages (dans les trois
+      langues).
 - [ ] Chaque question du `02` a sa réponse détaillée dans le `03`, même numérotation.
-- [ ] Toutes les commandes du `04` ont été **exécutées réellement** et fonctionnent
-      (images publiques disponibles, options valides pour Docker Engine ≥ 24).
+- [ ] La théorie contient au moins un encadré `Podman` et des encadrés « domaine » pour
+      chaque notion extérieure aux conteneurs.
+- [ ] Toutes les commandes du `04` ont été **exécutées réellement** (bac à sable ou WSL)
+      et fonctionnent avec Podman ≥ 4.9 rootless.
 - [ ] Les fichiers de `files/` sont présents et cohérents avec le texte du labo.
-- [ ] Section « Nettoyage » présente à la fin du labo pratique.
+- [ ] Section « Nettoyage » présente à la fin du labo pratique, avec `rm -f -t 0`.
 - [ ] Le `README.md` liste le labo.
