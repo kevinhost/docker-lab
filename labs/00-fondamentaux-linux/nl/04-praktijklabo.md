@@ -1,8 +1,8 @@
-# Labo 00 — Praktijklabo: een rondleiding door Linux via de terminal
+# Labo 00 — Praktijklabo: een rondleiding door Linux vanuit de terminal
 
-*Doel: elk begrip uit de theorie manipuleren — processen, signalen, exitcodes, permissies, omgeving, stromen, poorten, archieven — met niets anders dan wat Ubuntu 24.04 standaard meelevert. Geen enkele container hier: alles wat je ziet komt, exact zo, terug in de Docker-labo's.*
+*Doel: elk begrip uit de theorie zelf in handen krijgen — processen, signalen, exitcodes, permissies, omgeving, stromen, poorten, archieven — met niets meer dan wat Ubuntu 24.04 standaard aan boord heeft. Containers komen hier nog niet aan bod, maar alles wat je hier doet, komt ongewijzigd terug in de Docker-labo's.*
 
-**Vereisten** — Windows 10/11 met WSL 2 en een **Ubuntu 24.04**-distributie. Niets anders: geen Podman (labo 01), geen extra pakket. Open een Ubuntu-terminal en blijf erin.
+**Vereisten** — Windows 10/11 met WSL 2 en een **Ubuntu 24.04**-distributie. Meer niet: nog geen Podman (dat is labo 01), geen extra pakketten. Open een Ubuntu-terminal en blijf erin werken.
 
 ---
 
@@ -15,15 +15,15 @@ whoami
 id
 ```
 
-**Observeer** `PRETTY_NAME="Ubuntu 24.04.x LTS"`, een kernel `6.6.87.2-microsoft-standard-WSL2` (het achtervoegsel is de WSL-handtekening), je gebruikersnaam, en een regel `uid=1000(...) gid=1000(...) groepen=... 27(sudo) ...`.
+**Observeer**: `PRETTY_NAME="Ubuntu 24.04.x LTS"`; een kernel zoals `6.6.87.2-microsoft-standard-WSL2` (het achtervoegsel is de WSL-handtekening); je gebruikersnaam; en een regel `uid=1000(...) gid=1000(...) groups=... 27(sudo) ...`.
 
-*Uitleg.* Drie identiteiten om nooit meer te verwarren: de **distributie** (Ubuntu 24.04, de userland), de **kernel** (door Microsoft gecompileerd voor WSL), en **jij** (UID 1000, lid van de groep `sudo`). De kernel zal van jou alleen dat getal kennen: 1000.
+*Uitleg.* Je zag net drie identiteiten die je nooit meer mag verwarren: de **distributie** (Ubuntu 24.04 — de userland), de **kernel** (door Microsoft gebouwd voor WSL) en **jijzelf** (UID 1000, lid van de groep `sudo`). Voor de kernel ben je niets meer dan dat nummer: 1000.
 
-> **Windows / WSL** — Als `uname -r` geen `-microsoft-standard-WSL2` toont, zit je niet in WSL 2 (`wsl --version` en `wsl --list --verbose` aan PowerShell-kant om te controleren). De hele laboreeks veronderstelt WSL 2.
+> **Windows / WSL** — Eindigt `uname -r` niet op `-microsoft-standard-WSL2`, dan zit je niet in WSL 2. Controleer vanuit PowerShell met `wsl --version` en `wsl --list --verbose`. De hele laboreeks gaat uit van WSL 2.
 
 ---
 
-## Stap 1 — De kernel, de userland, en de grens
+## Stap 1 — De kernel, de userland en de grens ertussen
 
 ```bash
 cat /proc/version
@@ -32,15 +32,15 @@ type cd
 which cat
 ```
 
-**Observeer**: de kernelversie voluit; `ls is /usr/bin/ls` (een programma, een bestand op schijf); `cd is a shell builtin` (geen programma: een interne functie van de shell); `/usr/bin/cat`.
+**Observeer**: de kernelversie voluit; `ls is /usr/bin/ls` — een programma, een bestand op schijf; `cd is a shell builtin` — helemaal geen programma, maar een functie binnen de shell; en `/usr/bin/cat`.
 
-*Uitleg.* Alles wat je typt is ofwel een **programma** uit de userland (een uitvoerbaar bestand ergens), ofwel een intern shellcommando. Geen van beide raakt de hardware aan: ze passeren via de system calls van de kernel. `cd` is intern om een precieze reden: van map veranderen is een attribuut *van het shellproces zelf* — een extern programma zou de map van zijn eigen proces veranderen en dan sterven, zonder effect op jou.
+*Uitleg.* Alles wat je typt is ofwel een **programma** uit de userland (een uitvoerbaar bestand ergens op schijf), ofwel een builtin van de shell. Geen van beide raakt de hardware aan — allebei gaan ze via de system calls van de kernel. En dat `cd` een builtin is, heeft een goede reden: de huidige map is een eigenschap *van het shellproces zelf*. Een extern `cd`-programma zou zijn eigen map wijzigen en dan stoppen — jouw shell zou er niets van merken.
 
-> **Linux** — `type` ondervraagt de shell ("wat zou jij met dit woord doen?"); `which` zoekt alleen in het `PATH`. Bij twijfel over een commando dat "liegt" (alias, functie) zegt `type` altijd de waarheid.
+> **Linux** — `type` vraagt aan de shell "wat zou jij met dit woord doen?"; `which` zoekt alleen in het `PATH`. Lijkt een commando je te bedriegen (een alias, een functie), vertrouw dan op `type` — dat zegt altijd de waarheid.
 
 ---
 
-## Stap 2 — Eén boom, meerdere mounts
+## Stap 2 — Eén boom, veel mounts
 
 ```bash
 ls /
@@ -49,7 +49,7 @@ df -h /
 ls /mnt/c/Windows 2>/dev/null | head -n 3
 ```
 
-**Observeer** de unieke root (`bin boot dev etc home ... proc ... tmp usr var`), de `findmnt`-regel van het type `/  /dev/sdc  ext4  rw,relatime,...`, een `df` in de orde van `1007G` (de *virtuele* grootte van de WSL-schijf), en — dit is Windows gezien vanuit Linux — de inhoud van `C:\Windows`.
+**Observeer**: één enkele wortel (`bin boot dev etc home ... proc ... tmp usr var`); een `findmnt`-regel zoals `/  /dev/sdc  ext4  rw,relatime,...`; een schijfgrootte rond `1007G` (de *virtuele* grootte van de WSL-schijf); en — dit is Windows, gezien vanuit Linux — de inhoud van `C:\Windows`.
 
 ```bash
 findmnt -t proc
@@ -57,11 +57,11 @@ ls /proc | head -n 8
 grep MemTotal /proc/meminfo
 ```
 
-**Observeer** `/proc  proc  proc  rw,relatime`: een bestandssysteem van het type `proc`, zonder schijf erachter. De `ls` toont **getallen** — één per levend proces — en `MemTotal` komt rechtstreeks van de kernel.
+**Observeer**: `/proc  proc  proc  rw,relatime` — een bestandssysteem van het type `proc`, zonder schijf erachter. De `ls` toont **getallen**, één per levend proces, en `MemTotal` komt rechtstreeks van de kernel.
 
-*Uitleg.* Geen stations `C:`/`D:`: alles hangt aan dezelfde boom via **mounts**. De Linux-schijf levert `/`, de Windows-schijf is gemount op `/mnt/c`, en de kernel zelf is gemount op `/proc` — een map waarvan de bestanden bij elke lezing ter plekke worden gefabriceerd. Docker-images (labo 02) en volumes (labo 06) zullen alleen maar mounts aan deze boom toevoegen.
+*Uitleg.* Geen `C:`- of `D:`-stations hier. Alles hangt aan één boom, vastgemaakt met **mounts**: de Linux-schijf levert `/`, de Windows-schijf hangt aan `/mnt/c`, en de kernel zelf hangt aan `/proc` — een map waarvan de bestanden bij elke lezing opnieuw worden gegenereerd. Docker-images (labo 02) en volumes (labo 06) zijn in wezen niets meer dan extra mounts aan deze boom.
 
-> **Windows / WSL** — `/mnt/c` steekt een grens Windows ↔ Linux over: dat is **traag**. Een project dat je compileert of images die je opslaat moeten aan de Linux-kant leven (`/home/...`), niet in `/mnt/c/Users/...`. Een reflex om nu al aan te leren.
+> **Windows / WSL** — Elke toegang tot `/mnt/c` steekt de grens Windows ↔ Linux over, en dat is **traag**. Projecten die je compileert en images die je opslaat, horen aan de Linux-kant (`/home/...`), niet in `/mnt/c/Users/...`. Maak daar nu al een gewoonte van.
 
 ---
 
@@ -73,16 +73,16 @@ echo $$
 ps -p 1 -o pid,comm
 ```
 
-**Observeer**: een bijna lege `ps` (jouw `bash`, de `ps` zelf); het PID van je shell (`echo $$`); en proces 1: `systemd`. `ps` alleen toont enkel de processen van *jouw terminal*; alle andere (`ps -ef` toont ze) draaien zonder terminal — voor het merendeel zijn dat **daemons**, dienstprocessen zoals `systemd` zelf, met een naam die vaak op "d" eindigt.
+**Observeer**: `ps` toont bijna niets (jouw `bash` en de `ps` zelf); `echo $$` drukt het PID van je shell af; en proces 1 is `systemd`. Op zichzelf toont `ps` alleen de processen van *jouw terminal*. Alle andere — `ps -ef` toont ze wél — draaien zonder terminal, en de meeste daarvan zijn **daemons**: dienstprocessen zoals `systemd` zelf, met namen die meestal op "d" eindigen.
 
-Start nu een proces dat blijft duren, op de achtergrond:
+Start nu een proces dat even blijft hangen, op de achtergrond:
 
 ```bash
 sleep 300 &
 ps -o pid,ppid,stat,cmd
 ```
 
-**Observeer** een regel `sleep 300` waarvan het **PPID het PID van jouw bash is**: je zag zonet een afstamming.
+**Observeer** een regel `sleep 300` waarvan het **PPID gelijk is aan het PID van jouw bash** — een ouder-kindrelatie, live:
 
 ```
   PID  PPID STAT CMD
@@ -91,7 +91,7 @@ ps -o pid,ppid,stat,cmd
  2420  2363 R    ps -o pid,ppid,stat,cmd
 ```
 
-Ga dat proces bekijken in `/proc` (vervang `2419` door jouw PID):
+Ga dat proces nu bekijken in `/proc` (vervang `2419` door jouw eigen PID):
 
 ```bash
 head -n 3 /proc/2419/status
@@ -99,33 +99,33 @@ tr '\0' ' ' < /proc/2419/cmdline; echo
 ls -l /proc/2419/exe
 ```
 
-**Observeer** `Name: sleep`, `State: S (sleeping)`, de exacte commandoregel, en een link `exe -> /usr/bin/sleep`.
+**Observeer**: `Name: sleep`, `State: S (sleeping)`, de exacte commandoregel, en een link `exe -> /usr/bin/sleep`.
 
-*Uitleg.* `ps` heeft niets magisch: het leest `/proc`. Alles wat Docker je later toont (`podman top`, `podman inspect`) komt daar ook vandaan. `STAT S` betekent *sleeping* — wachtend; `R`, *running*.
+*Uitleg.* Er zit geen magie in `ps` — het leest gewoon `/proc`. Alles wat Docker je later toont (`podman top`, `podman inspect`) komt uit dezelfde bron. `STAT S` betekent *sleeping* (wachtend); `R` betekent *running*.
 
 ---
 
 ## Stap 4 — Signalen en exitcodes
 
-De `sleep` draait nog. Stuur hem beleefd weg:
+De `sleep` draait nog. Vraag hem vriendelijk om te vertrekken:
 
 ```bash
-kill 2419        # jouw eigen PID
+kill 2419        # jouw eigen PID hier
 ps -o pid,cmd | grep "[s]leep 300" || echo "geen sleep-proces meer"
 ```
 
-**Observeer** `Terminated` (getoond door de shell) en dan `geen sleep-proces meer`: `kill` zonder optie stuurt `SIGTERM`, en `sleep` gehoorzaamt.
+**Observeer**: de shell meldt `Terminated`, daarna `geen sleep-proces meer`. Een gewone `kill` stuurt `SIGTERM`, en `sleep` gehoorzaamt.
 
-Opnieuw, maar brutaal:
+Nog een keer, maar nu hardhandig:
 
 ```bash
 sleep 300 &
 kill -9 %1
 ```
 
-**Observeer** deze keer `Killed`: `SIGKILL` heeft niets gevraagd. (`%1` verwijst naar *job* nr. 1 van de shell — handig om het PID niet te moeten opzoeken.)
+**Observeer**: deze keer meldt de shell `Killed`. `SIGKILL` heeft niets gevraagd. (`%1` verwijst naar *job* nummer 1 van de shell — handig als je geen zin hebt om het PID op te zoeken.)
 
-Nu de verzameling exitcodes:
+Verzamel nu de exitcodes:
 
 ```bash
 true;  echo $?
@@ -135,11 +135,11 @@ onbekend-commando; echo $?
 bash -c 'kill -9 $$'; echo $?
 ```
 
-**Observeer**, in volgorde: `0`, `1`, `2` (na de foutmelding van `ls`), `127` (na `command not found`), en **`137`** (na `Killed`).
+**Observeer**, in volgorde: `0`, `1`, `2` (na de foutmelding van `ls`), `127` (na `command not found`) en **`137`** (na `Killed`).
 
-*Uitleg.* `0` = succes, de rest = mislukking, en `128 + n` = dood door signaal *n*: 137 = 128 + 9 = gedood door SIGKILL. Deze vijf getallen zijn exact wat `podman ps` in zijn kolom `Exited (...)` zal tonen in labo 03 — leer ze hier lezen, waar alles eenvoudig is.
+*Uitleg.* `0` betekent succes, al de rest is een mislukking, en `128 + n` betekent dood door signaal *n* — dus 137 = 128 + 9 = gedood door SIGKILL. Deze vijf getallen zijn exact wat `podman ps` in labo 03 in zijn kolom `Exited (...)` zal tonen. Leer ze hier lezen, waar alles nog eenvoudig is.
 
-> **Onthouden** — De beschaafde escalatie: `kill` (SIGTERM, de applicatie mag opruimen), wachten, en pas dan `kill -9` (SIGKILL, de kernel wist). `docker stop` past dat protocol automatisch toe: SIGTERM, 10 seconden gratie, SIGKILL.
+> **Onthouden** — Escaleer in de juiste volgorde: eerst `kill` (SIGTERM — de applicatie mag opruimen), dan wachten, en pas daarna `kill -9` (SIGKILL — de kernel veegt weg). `docker stop` voert dat protocol voor jou uit: SIGTERM, tien seconden gratie, dan SIGKILL.
 
 ---
 
@@ -151,9 +151,9 @@ env | wc -l
 env | grep -E '^(HOME|PATH|LANG)='
 ```
 
-**Observeer** je omgeving: enkele tientallen variabelen, waaronder `HOME=/home/<jij>` en een `PATH` dat, op WSL, ook Windows-paden bevat (`/mnt/c/Windows/system32`…).
+**Observeer** je omgeving: enkele tientallen variabelen, waaronder `HOME=/home/<jij>` en een `PATH` dat op WSL zelfs Windows-paden bevat (`/mnt/c/Windows/system32`…).
 
-Het beslissende experiment — een shellvariabele is **geen** omgevingsvariabele:
+Nu het beslissende experiment — een shellvariabele is **geen** omgevingsvariabele:
 
 ```bash
 MSG=hallo
@@ -163,11 +163,11 @@ export MSG
 bash -c 'echo kind ziet: [$MSG]'
 ```
 
-**Observeer**: `hallo`, dan `kind ziet: []` (leeg!), en dan, na `export`, `kind ziet: [hallo]`.
+**Observeer**: `hallo`, dan `kind ziet: []` — leeg! — en na de `export`: `kind ziet: [hallo]`.
 
-*Uitleg.* Elk kindproces krijgt een **kopie** van de omgeving van de ouder, bevroren bij de start. Vóór `export` bestond `MSG` alleen in jouw shell. Dit exacte mechanisme gebruikt `podman run -e MSG=hallo` in labo 08 om je applicaties te configureren.
+*Uitleg.* Elk kindproces krijgt een **kopie** van de omgeving van zijn ouder, bevroren op het moment van de start. Vóór de `export` bestond `MSG` alleen in jouw shell. Dit is exact het mechanisme waarmee `podman run -e MSG=hallo` in labo 08 jouw applicaties zal configureren.
 
-Vervolgens het `PATH`:
+Dan het `PATH`:
 
 ```bash
 mkdir -p ~/labo0/tools
@@ -178,9 +178,9 @@ export PATH="$HOME/labo0/tools:$PATH"
 mijntool
 ```
 
-**Observeer** eerst `command not found` en `127`, en dan, zodra de map aan het `PATH` is toegevoegd, `eigen tool: ok`.
+**Observeer**: eerst `command not found` en `127`; zodra de map in het `PATH` staat: `eigen tool: ok`.
 
-*Uitleg.* De shell "kent" geen enkel commando: hij zoekt een uitvoerbaar bestand met die naam in de mappen van het `PATH`, in volgorde, en stopt bij het eerste dat hij vindt. (Dit gewijzigde `PATH` geldt alleen voor deze shell; permanent = één regel in `~/.bashrc`.)
+*Uitleg.* De shell "kent" geen enkel commando. Hij doorzoekt de mappen van het `PATH` in volgorde op een uitvoerbaar bestand met die naam, en stopt bij de eerste treffer. (Dit aangepaste `PATH` geldt alleen voor deze shell — blijvend maak je het met één regel in `~/.bashrc`.)
 
 ---
 
@@ -188,51 +188,51 @@ mijntool
 
 ```bash
 cd ~/labo0
-echo "eerste regel"  > notes.txt
-echo "tweede regel" >> notes.txt
-cat notes.txt
+echo "eerste regel"  > notities.txt
+echo "tweede regel" >> notities.txt
+cat notities.txt
 ```
 
 **Observeer**: `>` maakt aan (of overschrijft!), `>>` voegt toe.
 
-Scheid nu de twee uitvoerstromen:
+Splits nu de twee uitvoerstromen:
 
 ```bash
-ls notes.txt /bestaat-niet > uitvoer.txt 2> fouten.txt
+ls notities.txt /bestaat-niet > uitvoer.txt 2> fouten.txt
 cat uitvoer.txt
 cat fouten.txt
 ```
 
-**Observeer**: het scherm bleef stil tijdens de `ls`; `uitvoer.txt` bevat `notes.txt`, `fouten.txt` bevat `ls: cannot access '/bestaat-niet': No such file or directory`.
+**Observeer**: het scherm bleef stil tijdens de `ls`. In `uitvoer.txt` staat `notities.txt`; in `fouten.txt` staat `ls: cannot access '/bestaat-niet': No such file or directory`.
 
 ```bash
-ls notes.txt /bestaat-niet > alles.txt 2>&1
+ls notities.txt /bestaat-niet > alles.txt 2>&1
 cat alles.txt
 ```
 
-**Observeer** de twee regels samen: `2>&1` sluit de foutstroom (2) aan op waar de uitvoer (1) naartoe wijst.
+**Observeer** beide regels samen: `2>&1` sluit de foutstroom (2) aan op de plek waar de uitvoerstroom (1) op dat moment naartoe wijst.
 
-Ten slotte de pipes:
+Tot slot de pipes:
 
 ```bash
 ps -ef | wc -l
 ps -ef | grep "[b]ash" | head -n 3
 ```
 
-**Observeer** het aantal processen van het systeem, en dan jouw shells — zonder tussenbestand: de uitvoer van elk commando voedt de invoer van het volgende.
+**Observeer** het aantal processen op het systeem, en daarna jouw shells — zonder ergens een tussenbestand: de uitvoer van elk commando voedt de invoer van het volgende.
 
-> **Linux / Shell** — De truc `grep "[b]ash"`: de haakjes vormen een reguliere expressie die `bash` matcht… maar de regel van de `grep` zelf bevat `[b]ash`, dat zichzelf niet matcht. Zonder dat zou `grep` altijd zichzelf vinden. Je ziet dit patroon in alle labo's.
+> **Linux / Shell** — Over die truc met `grep "[b]ash"`: de haakjes vormen een reguliere expressie die `bash` matcht, maar op de commandoregel van de `grep` zelf staat `[b]ash`, en dat matcht niet met het patroon. Zonder deze truc zou `grep` zichzelf altijd terugvinden in de lijst. Dit idioom zie je in elk labo terug.
 
 ---
 
-## Stap 7 — Permissies: een `ls -l` lezen
+## Stap 7 — Permissies: een `ls -l` leren lezen
 
 ```bash
-ls -l notes.txt
-stat -c "%U %G %a %n" notes.txt
+ls -l notities.txt
+stat -c "%U %G %a %n" notities.txt
 ```
 
-**Observeer** `-rw-r--r-- 1 <jij> <jij> 27 ... notes.txt` en de numerieke vorm `644`: eigenaar `rw` (6), groep `r` (4), anderen `r` (4).
+**Observeer**: `-rw-r--r-- 1 <jij> <jij> 27 ... notities.txt`, en de numerieke vorm `644` — eigenaar `rw` (6), groep `r` (4), anderen `r` (4).
 
 Maak een script en probeer het uit te voeren:
 
@@ -244,9 +244,9 @@ ls -l hallo.sh
 ./hallo.sh
 ```
 
-**Observeer**: `Permission denied` en code **126** (gevonden maar niet uitvoerbaar); daarna, na `chmod +x`, `-rwxr-xr-x` en het script dat draait — met bij elke start een ander PID.
+**Observeer**: `Permission denied` en code **126** — gevonden, maar niet uitvoerbaar. Na `chmod +x`: `-rwxr-xr-x`, en het script draait — telkens met een ander PID.
 
-En de root-grens:
+Nu de grens met root:
 
 ```bash
 cat /etc/shadow; echo $?
@@ -254,15 +254,15 @@ ls -l /etc/shadow
 sudo head -n 1 /etc/shadow
 ```
 
-**Observeer** `Permission denied` (code 1), de regel `-rw-r----- 1 root shadow ...` die het verklaart (je bent noch `root` noch van de groep `shadow`), en dan, via `sudo`, de eerste regel `root:*:...` (`*` of `!`: vergrendeld account, geen enkel wachtwoord aanvaard).
+**Observeer**: `Permission denied` (code 1); de regel `-rw-r----- 1 root shadow ...` die dat verklaart (je bent geen `root` en zit niet in de groep `shadow`); en via `sudo` de eerste regel `root:*:...` (`*` of `!` betekent: account vergrendeld, geen enkel wachtwoord past ooit).
 
-*Uitleg.* De kernel vergelijkt de UID van het proces met de drie `rwx`-tripletten en past het eerste toe dat op jou slaat. `sudo` "omzeilt" niets: het start het proces met UID 0, waaraan de kernel niets weigert. In labo 06, wanneer een container in een volume bestanden schrijft die aan een onverwachte UID toebehoren, is dit het leesrooster dat je nodig hebt.
+*Uitleg.* De kernel legt de UID van het proces naast de drie `rwx`-tripletten en past het eerste toe dat op jou van toepassing is. `sudo` sluipt nergens omheen: het start het proces met UID 0, en UID 0 wordt door de kernel niets geweigerd. Hou dit model bij de hand voor labo 06, wanneer een container bestanden in een volume schrijft onder een onverwachte UID.
 
 ---
 
 ## Stap 8 — Een server, een poort, een client
 
-Ubuntu 24.04 levert Python mee: je eerste HTTP-server in één regel.
+Ubuntu 24.04 levert Python mee, dus je eerste HTTP-server is één regel ver.
 
 ```bash
 echo "<h1>Hallo vanaf mijn server</h1>" > index.html
@@ -270,14 +270,14 @@ python3 -m http.server 8080 &
 curl -s http://localhost:8080/index.html
 ```
 
-**Observeer** je HTML teruggestuurd via HTTP: `<h1>Hallo vanaf mijn server</h1>`.
+**Observeer** je HTML die via HTTP terugkomt: `<h1>Hallo vanaf mijn server</h1>`.
 
 ```bash
 curl -si http://localhost:8080/index.html | head -n 4
 ss -tlnp | grep 8080
 ```
 
-**Observeer** het volledige HTTP-antwoord (`HTTP/1.0 200 OK`, `Server: SimpleHTTP/0.6 Python/3.12.3`, `Content-type: text/html`) en de luisterregel:
+**Observeer** het volledige HTTP-antwoord (`HTTP/1.0 200 OK`, `Server: SimpleHTTP/0.6 Python/3.12.3`, `Content-type: text/html`) en de luisterende socket:
 
 ```
 LISTEN 0  5  0.0.0.0:8080  0.0.0.0:*  users:(("python3",pid=2788,fd=3))
@@ -285,7 +285,7 @@ LISTEN 0  5  0.0.0.0:8080  0.0.0.0:*  users:(("python3",pid=2788,fd=3))
 
 `0.0.0.0:8080`: het proces `python3` luistert op **alle** interfaces, poort 8080.
 
-> **Windows / WSL** — Open een **Windows**-browser op `http://localhost:8080`: de pagina verschijnt. WSL 2 stuurt `localhost` automatisch door van Windows naar Ubuntu. Die doorschakeling laat je in labo 07 toe om je containers te testen vanuit een Windows-browser.
+> **Windows / WSL** — Open een **Windows**-browser op `http://localhost:8080` — de pagina laadt. WSL 2 stuurt `localhost` automatisch door van Windows naar Ubuntu. In labo 07 test je dankzij diezelfde doorschakeling je containers vanuit een Windows-browser.
 
 Probeer nu een geprivilegieerde poort:
 
@@ -293,7 +293,7 @@ Probeer nu een geprivilegieerde poort:
 python3 -m http.server 80
 ```
 
-**Observeer** de mislukking: `PermissionError: [Errno 13] Permission denied`. Poort 80 ligt onder de drempel 1024, voorbehouden aan root — en jij bent UID 1000. Podman rootless erft dezelfde limiet.
+**Observeer** de mislukking: `PermissionError: [Errno 13] Permission denied`. Poort 80 ligt onder de drempel van 1024, en die zone is van root — jij bent UID 1000. Rootless Podman leeft met dezelfde beperking.
 
 Zet de server uit en controleer:
 
@@ -302,11 +302,11 @@ kill %1
 curl -s --max-time 2 http://localhost:8080/; echo $?
 ```
 
-**Observeer** code **7** van `curl`: *connection refused* — niemand luistert nog.
+**Observeer** exitcode **7** van `curl` — *connection refused*. Er luistert niemand meer.
 
 ---
 
-## Stap 9 — Archiveren: `tar`, de voorouder van de images
+## Stap 9 — Archieven: `tar`, de voorloper van images
 
 ```bash
 mkdir -p mijn-app/config
@@ -317,7 +317,7 @@ ls -lh mijn-app.tar.gz
 file mijn-app.tar.gz
 ```
 
-**Observeer** een archief van enkele honderden bytes, geïdentificeerd als `gzip compressed data`.
+**Observeer** een archief van enkele honderden bytes, herkend als `gzip compressed data`.
 
 ```bash
 tar -tf mijn-app.tar.gz
@@ -326,34 +326,34 @@ tar -xzf mijn-app.tar.gz -C /tmp/herstel
 cat /tmp/herstel/mijn-app/config/app.properties
 ```
 
-**Observeer** de inhoudslijst (`-t` = *test/list*), dan de extractie elders (`-C`) en het identiek herstelde bestand: `app.port=8080`.
+**Observeer** de inhoudslijst (`-t` staat voor *list*), daarna de extractie naar een andere plek (`-C`), en het bestand dat er weer exact zo uitkomt: `app.port=8080`.
 
-*Uitleg.* `tar` (*tape archive*, 1979) stopt een volledige boomstructuur — paden, permissies, eigenaars — in één bestand. Onthoud het goed: een **layer** van een Docker-image is letterlijk een tar-archief, en `podman save` (labo 02) levert je een tar van tars. Niets nieuws onder de zon.
+*Uitleg.* `tar` (*tape archive*, 1979) stopt een volledige mappenboom — paden, permissies, eigenaars — in één bestand. Onthoud dat goed: een **layer** van een Docker-image is letterlijk een tar-archief, en `podman save` (labo 02) geeft je straks een tar vol tars. Niets nieuws onder de zon.
 
 ---
 
 ## Opruimen
 
-Controleer dat er geen laboproces meer rondhangt, en verwijder dan de bestanden:
+Controleer dat er geen laboproces meer rondhangt, en verwijder daarna de bestanden:
 
 ```bash
-ps -o pid,cmd | grep -E "[s]leep|[h]ttp.server" || echo "niets te doden"
+ps -o pid,cmd | grep -E "[s]leep|[h]ttp.server" || echo "niets meer te doden"
 rm -r ~/labo0
 rm -r /tmp/herstel
 ```
 
-Het gewijzigde `PATH` en de variabele `MSG` verdwijnen met deze shell: sluit de terminal. (Er werd niets geïnstalleerd: er valt niets te deïnstalleren.)
+Het aangepaste `PATH` en de variabele `MSG` sterven mee met deze shell — de terminal sluiten volstaat. Er werd niets geïnstalleerd, dus er valt ook niets te verwijderen.
 
 ---
 
-## Wat je nu moet kunnen beweren
+## Wat je nu moet kunnen zeggen
 
 - Mijn kernel is `...-microsoft-standard-WSL2`; mijn distributie is Ubuntu 24.04; ik ben UID 1000.
-- Een proces heeft een PID en een ouder; ik zag het geboren worden (`&`), leven (`/proc/<pid>/`) en sterven (`kill`).
-- `kill` stuurt SIGTERM (onderhandelbaar), `kill -9` SIGKILL (niet onderhandelbaar); een proces gedood door SIGKILL eindigt met `137` = 128 + 9.
-- `$?` is `0` bij succes; `126` = niet uitvoerbaar, `127` = niet gevonden in het `PATH`.
-- Een variabele bereikt kindprocessen pas na `export` — en nooit al gestarte processen.
-- `>` vangt stdout, `2>` stderr, `2>&1` voegt ze samen, `|` schakelt processen aan elkaar.
-- `-rw-r-----` lees je in drie tripletten; de kernel vergelijkt UID's, en `root` (UID 0) negeert het rooster.
-- `ss -tlnp` zegt me wie op welke poort luistert; `0.0.0.0` = alle interfaces; < 1024 = alleen root; `curl` test het geheel.
-- Een mount haakt een bestandssysteem aan de unieke boom; `/proc` heeft geen schijf; `tar` verpakt een boomstructuur — Docker-images doen straks hetzelfde.
+- Een proces heeft een PID en een ouder. Ik zag er een geboren worden (`&`), leven (`/proc/<pid>/`) en sterven (`kill`).
+- `kill` stuurt SIGTERM, waarover te praten valt; `kill -9` stuurt SIGKILL, waarover niet. Een proces dat door SIGKILL sterft, eindigt met `137` = 128 + 9.
+- `$?` is `0` bij succes; `126` betekent niet uitvoerbaar; `127` betekent niet gevonden in het `PATH`.
+- Een variabele bereikt kindprocessen pas na `export` — en een proces dat al draait, bereikt ze nooit.
+- `>` vangt stdout op, `2>` stderr, `2>&1` voegt ze samen, `|` schakelt processen achter elkaar.
+- `-rw-r-----` lees je als drie tripletten; de kernel vergelijkt UID's; `root` (UID 0) slaat de controles gewoon over.
+- `ss -tlnp` toont wie op welke poort luistert; `0.0.0.0` betekent alle interfaces; onder 1024 is het domein van root; met `curl` test je het allemaal.
+- Een mount maakt een bestandssysteem vast aan de ene boom; `/proc` heeft geen schijf; `tar` verpakt een boom — precies wat Docker-images ook doen.
