@@ -1,10 +1,10 @@
 # Lab 03 — Hands-on lab: life, signals and death of a container
 
-*Goal: provoke every behaviour of the course yourself — the immediate stop, the 10 seconds of agony, code 137, automatic restart — and see who, without a daemon, watches over your containers.*
+*Goal: trigger every behaviour from the theory yourself — the immediate exit, the 10 seconds of agony, code 137, automatic restart — and see who watches over your containers when there is no daemon.*
 
-**Prerequisites** — Labs 01 and 02 done. Images `alpine` and `nginx:alpine` present.
+**Prerequisites** — Labs 01 and 02 completed. Images `alpine` and `nginx:alpine` present.
 
-**Files provided** — `files/demarrage-casse.sh` (broken start-up) and `files/demarrage-correct.sh` (correct start-up), used in step 3.
+**Files provided** — `files/demarrage-casse.sh` (broken start-up script) and `files/demarrage-correct.sh` (correct start-up script), used in step 3.
 
 ---
 
@@ -15,7 +15,7 @@ podman create --name state alpine sleep 120
 podman ps -a --filter name=state --format 'table {{.Names}}\t{{.Status}}'
 ```
 
-**Observe** the status `Created`: the container exists, no process is running.
+**Observe** the status `Created`: the container exists, but no process is running yet.
 
 ```bash
 podman start state
@@ -27,9 +27,9 @@ podman start state   && podman ps --filter name=state --format '{{.Status}}'
 podman rm -f -t 0 state
 ```
 
-**Observe** the succession `Up 1 second`, `Paused`, `Up 5 seconds`, a warning `StopSignal SIGTERM failed to stop container state in 2 seconds, resorting to SIGKILL`, `Exited (137)`, then `Up` again.
+**Observe** the sequence: `Up 1 second`, `Paused`, `Up 5 seconds`, a warning `StopSignal SIGTERM failed to stop container state in 2 seconds, resorting to SIGKILL`, `Exited (137)`, then `Up` again.
 
-*Explanation.* An `Exited` container is restartable: it kept its configuration and its writable layer. Note that `podman ps` without `-a` **does not show** a paused container: it is not "running".
+*Explanation.* An `Exited` container can be started again: it kept its configuration and its writable layer. Also note that `podman ps` without `-a` **does not show** a paused container — it is not "running".
 
 ---
 
@@ -40,7 +40,7 @@ podman run --name try1 alpine
 podman ps -a --filter name=try1 --format '{{.Status}}'
 ```
 
-**Observe** `Exited (0)`: `alpine`'s default command is `/bin/sh`, which, with no input, exits immediately.
+**Observe** `Exited (0)`: the default command for `alpine` is `/bin/sh`, and with no input it exits immediately.
 
 ```bash
 podman run -d --name try2 nginx:alpine
@@ -53,9 +53,9 @@ podman ps --filter name=try2 --format '{{.Status}}'
 podman run --rm alpine sh -c 'sleep 60 & echo "started in the background"'
 ```
 
-**Observe** that the command returns **immediately**, even though a `sleep 60` was started.
+**Observe** that the command returns **immediately**, even though a `sleep 60` really was started.
 
-*Explanation.* The `&` detached `sleep`; the shell ran `echo` and exited. PID 1 being dead, the container is destroyed, `sleep` with it. That is **the** number-one trap of start-up scripts.
+*Explanation.* The `&` detached `sleep`; the shell ran `echo` and exited. With PID 1 gone, the container was destroyed and took `sleep` with it. This is the single most common start-up-script mistake.
 
 Look at who is watching `try2` while it runs:
 
@@ -64,7 +64,7 @@ podman inspect --format '{{.State.ConmonPid}}' try2
 ps -o pid,ppid,user,comm -p $(podman inspect --format '{{.State.ConmonPid}}' try2)
 ```
 
-**Observe** a `conmon` process, under **your** user: it is the supervisor Podman leaves behind each container — the only "daemon" you have left, and it weighs only a few hundred KB.
+**Observe** a `conmon` process, running under **your** user: this is the supervisor Podman leaves behind each container — the only "daemon" you have left, and it uses just a few hundred KB.
 
 ```bash
 podman rm try1 ; podman rm -f -t 0 try2
@@ -88,7 +88,7 @@ Run the first one **inside** a container, mounting the current folder:
 podman run --rm -v "$PWD":/scripts alpine /scripts/demarrage-casse.sh
 ```
 
-**Observe** the message printed, then an immediate return to the prompt: the container is already dead and removed.
+**Observe**: the message appears and your prompt comes straight back — the container is already dead and removed.
 
 ```bash
 podman run -d --name correct -v "$PWD":/scripts alpine /scripts/demarrage-correct.sh
@@ -96,11 +96,11 @@ podman ps --filter name=correct --format '{{.Status}}'
 podman top correct
 ```
 
-**Observe** that the container stays `Up`, and that `podman top` shows `sleep 300` as PID 1 — and **no** parent `sh` process.
+**Observe** that the container stays `Up`, and that `podman top` shows `sleep 300` as PID 1 — with **no** parent `sh` process.
 
-*Explanation.* The `exec` of the second script **replaced** the shell with the final command, which inherits PID 1. That is exactly what the *exec* form of an `ENTRYPOINT` does, seen in lab 04.
+*Explanation.* The `exec` in the second script **replaced** the shell with the final command, which inherits PID 1. This is exactly what the *exec* form of an `ENTRYPOINT` does; lab 04 covers it.
 
-> **Linux** — `exec` is a shell built-in that calls the system call of the same name: the current process abandons its program (the shell) and loads the requested program **in its place**, keeping its PID. Without `exec`, the shell creates a child (`fork`) and waits. With `exec`, there is no shell any more at all.
+> **Linux** — `exec` is a shell built-in that invokes the system call of the same name: the current process drops its program (the shell) and loads the requested program **in its place**, keeping its PID. Without `exec`, the shell creates a child (`fork`) and waits. With `exec`, no shell remains at all.
 
 ```bash
 podman rm -f -t 0 correct
@@ -110,7 +110,7 @@ podman rm -f -t 0 correct
 
 ## Step 4 — The 10 seconds of agony
 
-Measure a stop on a process that ignores `SIGTERM`:
+Time a stop on a process that ignores `SIGTERM`:
 
 ```bash
 podman run -d --name idle alpine sleep 300
@@ -119,9 +119,9 @@ podman inspect --format 'code={{.State.ExitCode}} oom={{.State.OOMKilled}}' idle
 podman rm idle
 ```
 
-**Observe** the warning `StopSignal SIGTERM failed to stop container idle in 10 seconds, resorting to SIGKILL`, `real 0m10.1s` and `code=137 oom=false`.
+**Observe** the warning `StopSignal SIGTERM failed to stop container idle in 10 seconds, resorting to SIGKILL`, `real 0m10.1s`, and `code=137 oom=false`.
 
-Start again with a mini-init:
+Try again with a mini-init:
 
 ```bash
 podman run -d --init --name idle alpine sleep 300
@@ -131,7 +131,7 @@ podman inspect --format 'code={{.State.ExitCode}}' idle
 podman rm idle
 ```
 
-**Observe** `1 podman-init` then `sleep` as PID 2, a stop in `0m0.1s` and `code=143`.
+**Observe** `1 podman-init` with `sleep` below it as PID 2, a stop in `0m0.1s`, and `code=143`.
 
 And with an application that handles its signals properly:
 
@@ -144,9 +144,9 @@ podman rm web
 
 **Observe** an instant stop and `code=0`.
 
-*Explanation.* Three behaviours, three causes. `sleep` as PID 1 **ignores** `SIGTERM` (kernel protection): the engine waits then kills → `137`. With `--init`, `sleep` is no longer PID 1, the default action applies → `143`. nginx installs a signal handler and terminates cleanly (with code `0`, because nginx chose to exit normally). Those ten seconds multiplied by your containers are the unexplained duration of your redeployments.
+*Explanation.* Three behaviours, three causes. `sleep` as PID 1 **ignores** `SIGTERM` (kernel protection): the engine waits, then kills → `137`. With `--init`, `sleep` is no longer PID 1, so the default action applies → `143`. nginx installs a signal handler and shuts down cleanly (with code `0`, because nginx chooses to exit normally). Multiply those ten seconds by the number of containers you run, and you know where the mystery delay in your redeployments comes from.
 
-You can shorten the grace period — without fixing the cause:
+You can shorten the grace period — though it does not fix the cause:
 
 ```bash
 podman run -d --name idle alpine sleep 300
@@ -166,7 +166,7 @@ podman run --rm alpine sh -c 'exit 3'   ; echo "code=$?"
 podman run --rm alpine missing-command  ; echo "code=$?"
 ```
 
-**Observe** `0`, `3`, then `127` with `Error: crun: executable file `missing-command` not found in $PATH`.
+**Observe** `0`, `3`, then `127` together with `Error: crun: executable file `missing-command` not found in $PATH`.
 
 ```bash
 podman run -d --name killed alpine sleep 300
@@ -175,9 +175,9 @@ podman inspect --format 'code={{.State.ExitCode}}' killed
 podman rm killed
 ```
 
-**Observe** `137`, immediately this time: `kill` does not wait.
+**Observe** `137`, with no waiting this time: `kill` has no grace period.
 
-Now provoke a real memory shortage:
+Now trigger a genuine out-of-memory kill:
 
 ```bash
 podman run --name oom --memory=32m --memory-swap=32m alpine sh -c 'head -c 100m /dev/zero | tail'
@@ -186,9 +186,9 @@ podman inspect --format 'code={{.State.ExitCode}} oom={{.State.OOMKilled}}' oom
 podman rm oom
 ```
 
-**Observe** `code=137` and this time `oom=true`: same code, different cause, and only `inspect` tells the difference.
+**Observe** `code=137`, but this time `oom=true`: same code, different cause — and only `inspect` can tell them apart.
 
-*Explanation.* Above 128, the code means death by signal: `code - 128` gives the signal number. `127` on the other hand is a launch error: the application never started.
+*Explanation.* Above 128, the code means death by signal: `code - 128` gives the signal number. `127`, by contrast, is a launch error: the application never started at all.
 
 ---
 
@@ -207,13 +207,13 @@ ps -o pid,comm
 exit
 ```
 
-**Observe** that `nginx` is PID 1, followed by its *workers*, and that your `sh` has another PID. When you leave the shell, the container is **still** `Up`.
+**Observe** that `nginx` is PID 1, followed by its *workers*, and that your `sh` has a different PID. After you leave the shell, the container is **still** `Up`.
 
 ```bash
 podman ps --filter name=web --format '{{.Status}}'
 ```
 
-*Explanation.* `exec` created a **new** process in the container's namespaces. Leaving it does not affect PID 1. `attach`, conversely, would hook you onto nginx itself: a `Ctrl+C` would stop it. To read logs, always use:
+*Explanation.* `exec` created a **new** process in the container's namespaces; leaving it does not affect PID 1. `attach`, by contrast, would hook you onto nginx itself — one `Ctrl+C` and it stops. To read logs, always use:
 
 ```bash
 podman logs --tail 5 web
@@ -239,9 +239,9 @@ podman exec logs-demo cat /tmp/app.log
 podman rm -f -t 0 logs-demo
 ```
 
-**Observe** that `podman logs` prints `visible` and that the file content is only reachable by entering the container.
+**Observe** that `podman logs` prints only `visible`; you can reach the file's content only by going inside the container.
 
-*Explanation.* `conmon` only captures `stdout` and `stderr` of PID 1. That is why a containerised application must log to the console — and why you must not configure `logging.file.name` in a containerised Spring Boot.
+*Explanation.* `conmon` captures only `stdout` and `stderr` of PID 1. That is why a containerised application must log to the console — and why you must not configure `logging.file.name` in a containerised Spring Boot.
 
 ---
 
@@ -256,18 +256,18 @@ podman inspect --format 'restarts={{.RestartCount}} code={{.State.ExitCode}}' un
 podman logs unstable
 ```
 
-**Observe** a `RestartCount` of `3`, a status `Exited (1)`, and **four** "start" lines in the logs: the initial attempt plus three retries.
+**Observe** a `RestartCount` of `3`, a status of `Exited (1)`, and **four** "start" lines in the logs: the initial attempt plus three retries.
 
-*Explanation.* Logs accumulate from one run to the next on the same container: the first line is the root cause. `.State`, on the other hand, only describes the **last** run.
+*Explanation.* Logs from successive runs accumulate on the same container: the first line holds the root cause. `.State`, on the other hand, describes only the **last** run.
 
 ```bash
 podman rm unstable
 podman events --since 2m --until 1s | grep unstable | awk '{print $5, $6}' | uniq -c
 ```
 
-**Observe** the event journal: `container start`, `container died`, `container restart`… It is the only place where you see a container's *history*, not just its state.
+**Observe** the event journal: `container start`, `container died`, `container restart`… This is the only place where you see a container's *history*, not just its current state.
 
-Finally check the incompatibility announced in the course:
+Finally, confirm the conflict the theory announced:
 
 ```bash
 podman run --rm -d --restart=always nginx:alpine
@@ -275,7 +275,7 @@ podman run --rm -d --restart=always nginx:alpine
 
 **Observe** `Error: the --rm option conflicts with --restart, when the restartPolicy is not "" and "no"`.
 
-> **Podman** — And after a reboot? Test it: `podman run -d --restart=always --name survivor nginx:alpine`, then close **all** your Ubuntu windows and, from PowerShell, `wsl --shutdown`. Reopen Ubuntu: `podman ps` is empty. Nobody re-read the policy — there is no daemon. On a server that role belongs to `systemd` through a Quadlet file (lab 10). On your workstation this is acceptable: your development containers need not survive a reboot. `podman rm -f -t 0 survivor` afterwards.
+> **Podman** — What about a reboot? Test it yourself: run `podman run -d --restart=always --name survivor nginx:alpine`, close **all** your Ubuntu windows, and from PowerShell run `wsl --shutdown`. Reopen Ubuntu: `podman ps` is empty. Nobody re-read the policy — there is no daemon. On a server, `systemd` takes over that role through a Quadlet file (lab 10). On your workstation this is fine: development containers do not need to survive a reboot. Clean up afterwards with `podman rm -f -t 0 survivor`.
 
 ---
 
@@ -288,16 +288,16 @@ podman cp autopsy:/report.txt ./report.txt
 cat report.txt
 ```
 
-**Observe** that the file is recoverable while the container is `Exited (2)`.
+**Observe** that you can recover the file even though the container shows `Exited (2)`.
 
 ```bash
 podman rm autopsy
 podman cp autopsy:/report.txt ./other.txt
 ```
 
-**Observe** `Error: container "autopsy" does not exist`: once the container is removed, everything is lost.
+**Observe** `Error: container "autopsy" does not exist`: once the container is removed, everything is gone.
 
-*Explanation.* Operations rule: **inspect before removing**. `cp`, `logs` and `inspect` work on a stopped container, never on a removed one.
+*Explanation.* The operations rule: **inspect before you remove**. `cp`, `logs`, and `inspect` work on a stopped container — never on a removed one.
 
 ---
 
@@ -316,10 +316,10 @@ podman ps -a --format '{{.Names}}'
 
 ## What you must be able to state now
 
-- A container dies with its PID 1 — you provoked all three cases.
-- `sleep` as PID 1 ignores `SIGTERM`; `--init` fixes the symptom, `exec` the cause.
-- `137` = killed (by `stop`, `kill` or the OOM killer — `inspect` settles it), `143` = stopped cleanly, `127` = command not found.
+- A container dies with its PID 1 — you triggered all three cases yourself.
+- `sleep` as PID 1 ignores `SIGTERM`; `--init` fixes the symptom, `exec` fixes the cause.
+- `137` = killed (by `stop`, `kill`, or the OOM killer — `inspect` settles it), `143` = stopped cleanly, `127` = command not found.
 - `exec` creates a process, `attach` hooks onto PID 1.
-- `podman logs` only shows `stdout`/`stderr`, captured by `conmon`.
+- `podman logs` shows only `stdout`/`stderr`, as captured by `conmon`.
 - `podman rm` destroys logs and evidence: inspect first.
 - Without a daemon, a *restart policy* does not survive a `wsl --shutdown`.

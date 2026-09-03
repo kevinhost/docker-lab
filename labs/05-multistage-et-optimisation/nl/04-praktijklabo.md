@@ -1,13 +1,13 @@
 # Lab 05 — Praktijklab: van JDK naar JRE, van Node naar nginx
 
-*Doel: dezelfde API twee keer bouwen — in één stap en dan multi-stage — het verschil meten, hetzelfde doen voor een "Angular"-frontend, en dan buildcaches en een image zonder shell aanraken.*
+*Doel: dezelfde API twee keer bouwen — eerst single-stage, dan multi-stage — en het verschil meten; hetzelfde doen voor een "Angular"-frontend; en daarna buildcaches en een image zonder shell uitproberen.*
 
-**Vereisten** — Lab 04 afgewerkt: `~/labo-docker/04/Api.java` bestaat, de images `eclipse-temurin:21-jdk` en `eclipse-temurin:21-jre-alpine` zijn aanwezig.
+**Vereisten** — Lab 04 afgewerkt: `~/labo-docker/04/Api.java` bestaat, en de images `eclipse-temurin:21-jdk` en `eclipse-temurin:21-jre-alpine` staan klaar.
 
 **Geleverde bestanden** (`files/`)
-- `web/package.json` en `web/src/index.html` — een nep-Angular-project. De "build" wordt gesimuleerd door een `cp`: we bootsen de **vorm** van een frontend-project na, niet de inhoud.
+- `web/package.json` en `web/src/index.html` — een nep-Angular-project. Een `cp` speelt de rol van de "build": we bootsen de **vorm** van een frontend-project na, niet de inhoud.
 
-Je schrijft elke Dockerfile zelf: dat is de oefening.
+Je schrijft elke Dockerfile zelf — dat is de oefening.
 
 ---
 
@@ -34,15 +34,15 @@ podman build -f Dockerfile.mono -t api-mono:1.0 .
 podman images --format 'table {{.Repository}}\t{{.Tag}}\t{{.Size}}' | grep -E 'api-mono|temurin'
 ```
 
-**Observeer** `localhost/api-mono 1.0 488 MB` — precies de grootte van `eclipse-temurin:21-jdk`. De JAR van 2 KB heeft niets toegevoegd; de JDK heeft alles meegebracht.
+**Observeer** `localhost/api-mono 1.0 488 MB` — precies de grootte van `eclipse-temurin:21-jdk`. De JAR van 2 KB voegde niets toe; het gewicht komt volledig van de JDK.
 
 ```bash
 podman run --rm --entrypoint sh api-mono:1.0 -c 'ls /app; javac -version'
 ```
 
-**Observeer** `Api.java`, `api.jar`, `build`, en `javac 21.0.x`: de broncode **en** de compiler zitten in de productie-image.
+**Observeer** `Api.java`, `api.jar`, `build`, en `javac 21.0.x`: zowel de broncode **als** de compiler zitten in de productie-image.
 
-*Uitleg.* Deze image werkt perfect. Dat is wat ze gevaarlijk maakt: niets wijst erop dat 480 MB tooling en je bronnen met elke uitrol meegaan.
+*Uitleg.* Deze image werkt perfect, en dat maakt ze net gevaarlijk: niets waarschuwt je dat er bij elke uitrol 480 MB tooling en je broncode meereizen.
 
 ---
 
@@ -70,7 +70,7 @@ ENTRYPOINT ["java","-jar","/app/api.jar"]
 podman build -t api-multi:1.0 .
 ```
 
-**Observeer** de voorvoegsels `[1/2] STEP 1/4 …` en dan `[2/2] STEP 1/6 …`: Buildah nummert de stages, en alleen de laatste eindigt met `COMMIT api-multi:1.0`.
+**Observeer** de voorvoegsels `[1/2] STEP 1/4 …` en daarna `[2/2] STEP 1/6 …`: Buildah nummert de stages, en alleen de laatste eindigt met `COMMIT api-multi:1.0`.
 
 ```bash
 podman images --format 'table {{.Repository}}\t{{.Tag}}\t{{.Size}}' | grep -E 'api-mono|api-multi'
@@ -78,9 +78,9 @@ podman run --rm --entrypoint sh api-multi:1.0 -c 'ls /app; javac -version'
 podman run --rm --entrypoint ls api-multi:1.0 /src
 ```
 
-**Observeer** `209 MB` tegenover `488 MB`, dan `api.jar` alleen, `sh: javac: not found`, en `ls: cannot access '/src': No such file or directory`.
+**Observeer** `209 MB` tegenover `488 MB`, daarna alleen `api.jar`, `sh: javac: not found`, en `ls: cannot access '/src': No such file or directory`.
 
-*Uitleg.* De stage `build` bestond zolang de compilatie duurde, en werd dan weggegooid. De uiteindelijke image kent er alleen het bestand van dat door `COPY --from` gekopieerd is. Geen bronnen, geen JDK, geen map `/src`: ze hebben nooit deel uitgemaakt van haar lagen.
+*Uitleg.* De stage `build` heeft precies lang genoeg geleefd om te compileren, en werd daarna weggegooid. Het enige wat de uiteindelijke image ervan kent, is het bestand dat `COPY --from` heeft overgebracht. Geen bronnen, geen JDK, geen map `/src`: ze hebben nooit deel uitgemaakt van haar lagen.
 
 ```bash
 podman history api-multi:1.0 --format 'table {{.Size}}\t{{.CreatedBy}}' | head -6
@@ -88,22 +88,22 @@ podman history api-multi:1.0 --format 'table {{.Size}}\t{{.CreatedBy}}' | head -
 
 **Observeer** een laag van `4.61kB` voor de `COPY` van de JAR: al de rest komt van de basisimage.
 
-> **Valkuil** — `COPY --from=build /src /app` zou de hele map gekopieerd hebben, `Api.java` en `build/` inbegrepen. Je kopieert **het artefact**, niet de werkmap. Dat is vraag 3.
+> **Valkuil** — `COPY --from=build /src /app` zou de hele map gekopieerd hebben, `Api.java` en `build/` inbegrepen. Kopieer **het artefact**, niet de werkmap. Dat is vraag 3.
 
 ---
 
 ## Stap 3 — Binnenkijken in een stage
 
-Een weggegooide stage is niet inspecteerbaar… tenzij je vraagt daar te stoppen:
+Een weggegooide stage kun je niet inspecteren… tenzij je de build vraagt daar te stoppen:
 
 ```bash
 podman build --target build -t api-build-stage .
 podman run --rm api-build-stage ls -la /src
 ```
 
-**Observeer** `Api.java`, `api.jar`, `build/`: dat is de exacte inhoud van de stage op het moment dat stage 2 er `api.jar` uit kopieerde.
+**Observeer** `Api.java`, `api.jar`, `build/`: de exacte inhoud van de stage op het moment dat stage 2 er `api.jar` uit kopieerde.
 
-*Uitleg.* `--target` is het diagnosegereedschap van multi-stage: wanneer een `COPY --from` faalt met `no such file or directory`, bouw je de stage alleen en kijk je, in plaats van paden te raden (vraag 12).
+*Uitleg.* `--target` is hét diagnosegereedschap voor multi-stage builds. Faalt een `COPY --from` met `no such file or directory`, bouw dan de stage apart en kijk erin, in plaats van paden te raden (vraag 12).
 
 ```bash
 podman rmi api-build-stage
@@ -146,11 +146,11 @@ curl -s localhost:18081/
 podman rm -f -t 0 web
 ```
 
-**Observeer** je `index.html`, geserveerd door nginx. Open ook `http://localhost:18081/` in de Windows-browser.
+**Observeer** je `index.html`, geserveerd door nginx. Open ook `http://localhost:18081/` in de browser op Windows.
 
-*Uitleg.* Node diende om te "bouwen" (hier vervangt een `cp` de `ng build`), en verdween dan. De frontend in productie is een statische bestandsserver: daarom bevat de `web`-image van een Angular-stack nooit Node.
+*Uitleg.* Node deed het "bouwwerk" (hier vervangt een `cp` de `ng build`) en verdween daarna. In productie is de frontend een statische bestandsserver — precies daarom bevat de `web`-image van een Angular-stack nooit Node.
 
-> **Angular** — Vervang op een echt project `RUN echo "npm ci (gesimuleerd)"` door `RUN npm ci` en de `cp` door `RUN npm run build`, en kopieer `dist/<projectnaam>/browser`. De scheiding `COPY package*.json` → `npm ci` → `COPY . .` is die van de cache van lab 04: de 900 MB van `node_modules` worden alleen opnieuw gedownload als `package-lock.json` verandert.
+> **Angular** — Vervang op een echt project `RUN echo "npm ci (gesimuleerd)"` door `RUN npm ci`, vervang de `cp` door `RUN npm run build`, en kopieer `dist/<projectnaam>/browser`. De opsplitsing `COPY package*.json` → `npm ci` → `COPY . .` is de cache-opsplitsing van lab 04: de 900 MB `node_modules` worden alleen opnieuw gedownload wanneer `package-lock.json` verandert.
 
 ---
 
@@ -169,14 +169,14 @@ FROM docker.io/library/alpine
 COPY --from=build /src/build /app
 ```
 
-De `marker` simuleert de Maven-repository `~/.m2`: elke build voegt er een regel aan toe.
+Het bestand `marker` simuleert de Maven-repository `~/.m2`: elke build voegt er één regel aan toe.
 
 ```bash
 podman build --no-cache -f Dockerfile.cache -t cache-demo . 2>&1 | grep dep-
 podman build --no-cache -f Dockerfile.cache -t cache-demo . 2>&1 | grep dep-
 ```
 
-**Observeer** één regel `dep-…` bij de eerste build, **twee** bij de tweede — terwijl `--no-cache` alles herbouwd heeft. De map `/root/.m2` heeft het tussen de twee builds overleefd.
+**Observeer** één regel `dep-…` bij de eerste build en **twee** bij de tweede — terwijl `--no-cache` nochtans alles opnieuw gebouwd heeft. De map `/root/.m2` heeft de sprong van de ene build naar de andere overleefd.
 
 ```bash
 podman run --rm cache-demo ls /root/.m2
@@ -184,7 +184,7 @@ podman run --rm cache-demo ls /root/.m2
 
 **Observeer** `ls: /root/.m2: No such file or directory`: de cache zit **niet** in de image.
 
-*Uitleg.* De *cache mount* is een map die Buildah in je gebruikersopslag bijhoudt, gemount in de buildcontainer voor de duur van één instructie. Op een echt project vermijdt `RUN --mount=type=cache,target=/root/.m2 mvn package` dat bij elke build 300 MB afhankelijkheden opnieuw gedownload worden — zelfs als `pom.xml` verandert. Geen enkele regel `# syntax=` was nodig: Buildah begrijpt `--mount` van nature.
+*Uitleg.* De *cache mount* is een map die Buildah in je gebruikersopslag bijhoudt en die één instructie lang in de buildcontainer gemount wordt. Op een echt project bespaart `RUN --mount=type=cache,target=/root/.m2 mvn package` je bij elke build het opnieuw downloaden van 300 MB afhankelijkheden — ook wanneer `pom.xml` verandert. Er was geen enkele regel `# syntax=` nodig: Buildah begrijpt `--mount` van nature.
 
 ---
 
@@ -204,7 +204,7 @@ podman run --rm --entrypoint sh docker.io/library/eclipse-temurin:21-jre -c 'dpk
 
 **Observeer** ongeveer `73` pakketten tegenover `140`.
 
-*Uitleg.* Dit is het commando dat je uitvoert **vóór** je een image naar Alpine migreert: als een native bibliotheek van je applicatie voor `glibc` gecompileerd is, laadt ze niet met `musl`. Het aantal pakketten is dan weer wat een kwetsbaarheidsscanner telt: half zoveel pakketten, half zoveel mogelijke CVE's.
+*Uitleg.* Voer dit commando uit **vóór** je een image naar Alpine migreert: een native bibliotheek die voor `glibc` gecompileerd is, laadt niet met `musl`. Het aantal pakketten is dan weer wat een kwetsbaarheidsscanner telt: half zoveel pakketten betekent half zoveel mogelijke CVE's.
 
 ---
 
@@ -215,7 +215,7 @@ podman pull gcr.io/distroless/java21-debian12
 podman images --format '{{.Repository}} {{.Size}}' | grep distroless
 ```
 
-**Observeer** `194 MB` — minder dan de Alpine-JRE, hoewel het Debian is.
+**Observeer** `194 MB` — kleiner dan de Alpine-JRE, en dat terwijl dit Debian is.
 
 Maak `Dockerfile.distroless` aan:
 
@@ -234,9 +234,9 @@ podman exec d id
 podman rm -f -t 0 d
 ```
 
-**Observeer** `{"status":"UP"}` — de API draait — en dan `executable file `sh` not found in $PATH` en dezelfde fout voor `id`: er zit **niets** in deze image behalve Java en je JAR.
+**Observeer** `{"status":"UP"}` — de API draait — en daarna `executable file `sh` not found in $PATH`, met dezelfde fout voor `id`: deze image bevat **niets** behalve Java en je JAR.
 
-*Uitleg.* `COPY --from=` aanvaardt ook de naam van een bestaande **image**, niet alleen een stage. En een image zonder shell is een image waarin een aanvaller die code kan uitvoeren `sh`, `curl` noch `apt` vindt — maar waar jij ook niet in kunt. Je compenseert met rijke logs, `/actuator`, en `podman cp` om een bestand uit te halen.
+*Uitleg.* `COPY --from=` aanvaardt ook de naam van een bestaande **image**, niet alleen een stage. En een image zonder shell geeft een aanvaller die code kan uitvoeren `sh`, `curl` noch `apt` in handen — maar sluit jou er net zo goed buiten. Je compenseert met rijke logs, `/actuator`, en `podman cp` om een bestand uit de container te halen.
 
 ---
 
@@ -249,15 +249,15 @@ podman rmi $(podman images --filter dangling=true -q) 2>/dev/null
 podman images --format '{{.Repository}}:{{.Tag}}'
 ```
 
-**Observeer** dat `alpine`, `nginx:alpine`, `eclipse-temurin:21-jdk`, `eclipse-temurin:21-jre` en `eclipse-temurin:21-jre-alpine` overblijven. Bewaar `~/labo-docker/05/Dockerfile`: de stack van de volgende labs zal hem gebruiken.
+**Observeer** dat `alpine`, `nginx:alpine`, `eclipse-temurin:21-jdk`, `eclipse-temurin:21-jre` en `eclipse-temurin:21-jre-alpine` overblijven. Bewaar `~/labo-docker/05/Dockerfile`: de stack van de volgende labs gebruikt hem opnieuw.
 
 ---
 
 ## Wat je nu moet kunnen beweren
 
-- Een mono-stage image weegt zoveel als haar tooling: 488 MB voor een JAR van 2 KB.
-- Multi-stage behoudt alleen het gekopieerde artefact: 209 MB, zonder bronnen of compiler — en `--target` laat toe een stage te inspecteren.
+- Een single-stage image weegt zoveel als haar tooling: 488 MB voor een JAR van 2 KB.
+- Multi-stage houdt alleen het gekopieerde artefact over: 209 MB, zonder bronnen of compiler — en met `--target` kun je een stage inspecteren.
 - De Angular-frontend in productie is een nginx-image van 64 MB; Node zit er niet in.
-- Een *cache mount* overleeft builds en komt niet in de image; Buildah beheert hem zonder `# syntax=`.
-- Alpine = `musl`, Ubuntu = `glibc`: `ldd --version` zegt het, en een test valideert het.
-- Distroless: `{"status":"UP"}` maar geen `sh` — beveiliging tegenover observeerbaarheid.
+- Een *cache mount* overleeft builds en belandt nooit in de image; Buildah beheert hem zonder `# syntax=`.
+- Alpine = `musl`, Ubuntu = `glibc`: `ldd --version` vertelt het je, en een test bevestigt het.
+- Distroless: `{"status":"UP"}` maar geen `sh` — beveiliging in ruil voor observeerbaarheid.
