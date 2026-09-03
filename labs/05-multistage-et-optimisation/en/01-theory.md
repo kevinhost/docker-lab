@@ -1,20 +1,20 @@
 # Lab 05 — Multi-stage builds and production-grade images
 
-*Theory — how to go from a 500 MB image that contains your compiler to a 200 MB image that only contains what runs; and what Buildah does instead of BuildKit.*
+*Theory — how to turn a 500 MB image that ships your compiler into a 200 MB image that ships only what runs; and what Buildah does where Docker uses BuildKit.*
 
 ## Objectives
 
-- Understand why an image used to **build** must not be the one that **runs**.
+- Understand why the image that **builds** your code must never be the image that **runs** it.
 - Write a **multi-stage** build for Spring Boot and for Angular.
-- Choose a base image knowingly (Debian/Ubuntu, Alpine, distroless).
-- Know what BuildKit (Docker) and Buildah (Podman) bring: cache, secrets, stages.
-- Relate image size, attack surface and deployment time.
+- Make an informed choice of base image (Debian/Ubuntu, Alpine, distroless).
+- Know what BuildKit (Docker) and Buildah (Podman) offer: caching, secrets, stages.
+- Connect image size to attack surface and deployment time.
 
 ---
 
 ## 1. The problem: the build tooling stays in the image
 
-A first naive Dockerfile for a Java API:
+A first, naive Dockerfile for a Java API:
 
 ```dockerfile
 FROM docker.io/library/maven:3.9-eclipse-temurin-21
@@ -24,19 +24,19 @@ RUN mvn package -DskipTests
 ENTRYPOINT ["java","-jar","/app/target/api.jar"]
 ```
 
-It works. It produces an image of **800 MB to 1 GB** containing: a full JDK (compiler, debugging tools), Maven, the local `~/.m2` repository with hundreds of JARs, your **source code**, the tests, and the final JAR. In production, only the JRE and the JAR are used: about 200 MB.
+It works. It also produces an image of **800 MB to 1 GB** that carries a full JDK (compiler, debugging tools), Maven, the local `~/.m2` repository with hundreds of JARs, your **source code**, your tests, and the final JAR. Production needs only the JRE and the JAR: about 200 MB.
 
-The consequences are not merely cosmetic:
+The damage goes beyond cosmetics:
 
-- **Security.** The source code goes to everyone who has the image. Every embedded tool (compiler, `curl`, `git`, shell) is an additional means of action for an attacker, and one more line in the vulnerability scan report.
-- **Cost.** 800 MB transferred at every deployment, to every node, stored in every registry, with retention of previous versions.
-- **Time.** Starting a container includes downloading the image if it is absent. On a production incident at 3 a.m., the difference shows.
+- **Security.** Anyone who gets the image gets your source code. Every bundled tool (compiler, `curl`, `git`, shell) is one more thing an attacker can turn against you, and one more line in the vulnerability scan report.
+- **Cost.** Every deployment moves 800 MB to every node; every registry stores it, plus the retained older versions.
+- **Time.** If a node does not have the image yet, the download is part of container startup. During a production incident at 3 a.m., that difference hurts.
 
-> **Security** — An image's **attack surface** is everything an attacker can *use* once they have obtained code execution: a shell to explore, `curl` to exfiltrate, a compiler to craft a tool, a package manager to install more. Every absent binary is one more step for them. That is why scanners (Trivy, Grype) count packages, and why "minimal" is not only about megabytes.
+> **Security** — An image's **attack surface** is everything an attacker can *use* once they achieve code execution: a shell to explore with, `curl` to exfiltrate data, a compiler to craft tools, a package manager to install more. Every binary you leave out forces one extra step on them. That is why scanners (Trivy, Grype) count packages, and why "minimal" is about more than megabytes.
 
 ## 2. Multi-stage
 
-A Dockerfile can contain **several `FROM`s**. Each opens a *stage* — an independent build environment. Only the **last** one produces the final image; the others are discarded. And `COPY --from=<stage>` lets you fetch files from a previous stage.
+A Dockerfile can contain **several `FROM` instructions**. Each one opens a *stage* — an independent build environment. Only the **last** stage becomes the final image; the others are thrown away. `COPY --from=<stage>` pulls files out of an earlier stage.
 
 ```dockerfile
 # ---------- stage 1: build ----------
@@ -56,9 +56,9 @@ EXPOSE 8080
 ENTRYPOINT ["java","-jar","/app/app.jar"]
 ```
 
-The final image contains **a JRE and a JAR**. No Maven, no JDK, no sources, no tests, no `.m2`. Nothing that happened in the `build` stage leaves a trace in it — not even in hidden layers, since those layers are simply not part of the image.
+The final image contains **a JRE and a JAR** — no Maven, no JDK, no sources, no tests, no `.m2`. Nothing that happened in the `build` stage leaves any trace, not even in hidden layers: those layers are simply not part of the image.
 
-> **Remember** — Multi-stage is also the only truly reliable protection against build secrets: what is copied into a discarded stage does not exist in the final image. Be careful though: `COPY --from=build /app /app` would copy everything, secrets included. You copy only the artefact.
+> **Remember** — Multi-stage is also the only truly reliable protection for build secrets: whatever lands only in a discarded stage does not exist in the final image. One caveat: `COPY --from=build /app /app` would copy everything back, secrets included. Copy only the artefact.
 
 The same pattern for Angular:
 
@@ -76,37 +76,37 @@ COPY nginx.conf /etc/nginx/conf.d/default.conf
 EXPOSE 80
 ```
 
-> **Angular** — `ng build` compiles the TypeScript components, bundles everything into a few `.js`, `.css` files and an `index.html`, minifies them and names them with a fingerprint (`main-a1b2c3.js`) for browser caching. The result is **static**: any file server serves it. `ng serve`, on the other hand, is a development server that recompiles at every change — precious on your workstation, pointless in production.
+> **Angular** — `ng build` compiles the TypeScript components, bundles everything into a handful of `.js` and `.css` files plus an `index.html`, minifies them, and fingerprints their names (`main-a1b2c3.js`) for browser caching. The output is **static**: any file server can serve it. `ng serve`, by contrast, is a development server that recompiles on every change — invaluable on your workstation, useless in production.
 
-Crucial point: **Node does not survive** the build. An Angular front end in production is only HTML, CSS and JavaScript; it needs no server-side JavaScript engine. You **never** containerise `ng serve`.
+One point matters above all: **Node does not survive** the build. An Angular front end in production is nothing but HTML, CSS and JavaScript; it needs no server-side JavaScript engine. You **never** containerise `ng serve`.
 
 ## 3. Choosing a base image
 
 | Base | Size | Advantages | Drawbacks |
 |---|---|---|---|
-| `debian` / `ubuntu` | 75-120 MB | Everything works, full tooling, `glibc` | Heavy, many packages so many CVEs |
+| `debian` / `ubuntu` | 75-120 MB | Everything works, full tooling, `glibc` | Heavy; many packages, so many CVEs |
 | `*-slim` | 30-80 MB | Good compromise, still Debian | Fewer tools installed |
 | `alpine` | 5-10 MB | Very light, efficient `apk` | Uses **musl** rather than `glibc` |
 | *distroless* | 20-50 MB | No shell, no package manager | Hard to debug, no `exec sh` |
 
-> **Linux** — The **C library** (`libc`) is the layer between programs and the kernel: `printf`, `malloc`, DNS resolution, locales. Almost every Linux binary depends on it. `glibc` (GNU) is the historical, rich, compatible implementation; `musl` is a minimalist rewrite, chosen by Alpine for its size. A binary compiled for one does not load with the other: `ldd --version` inside the container tells you which one you have.
+> **Linux** — The **C library** (`libc`) sits between programs and the kernel: `printf`, `malloc`, DNS resolution, locales. Almost every Linux binary depends on it. `glibc` (GNU) is the historical implementation, rich and compatible; `musl` is a minimalist rewrite that Alpine picked for its small size. A binary compiled against one will not load with the other; `ldd --version` inside the container tells you which one you have.
 
-The Alpine trap deserves a closer look. Most programs cope with `musl`, but not all: native binaries compiled for `glibc` refuse to start, some native Java libraries (compression, cryptography, PDF generation) fail with `UnsatisfiedLinkError`, and differences in DNS resolution or locales appear. Slowdowns have also been measured in the memory allocation of some Java workloads.
+The Alpine trap deserves a closer look. Most programs run fine on `musl`, but not all of them: native binaries compiled for `glibc` refuse to start, some native Java libraries (compression, cryptography, PDF generation) fail with `UnsatisfiedLinkError`, and subtle differences show up in DNS resolution and locales. Some Java workloads have also measured slower memory allocation.
 
-In practice, for Spring Boot: `eclipse-temurin:21-jre-alpine` fits the vast majority of cases and halves the size; in case of a native dependency, you go back to `eclipse-temurin:21-jre` (Ubuntu). The choice is **tested**, not decreed.
+In practice, for Spring Boot, `eclipse-temurin:21-jre-alpine` covers the vast majority of cases and halves the image size. If a native dependency breaks, fall back to `eclipse-temurin:21-jre` (Ubuntu). Test the choice — never settle it on principle.
 
-*Distroless* images (Google) only contain the runtime and your application: no shell, no `ls`, no package manager. The attack surface is minimal, but `podman exec -it container sh` no longer works — you must have planned your observability otherwise.
+*Distroless* images (from Google) contain only the runtime and your application: no shell, no `ls`, no package manager. The attack surface is minimal, but `podman exec -it container sh` no longer works — you need to have planned your observability some other way.
 
 ## 4. What really weighs
 
-Four levers, in decreasing order of effectiveness:
+Four levers, from most to least effective:
 
-1. **Multi-stage** — removes the build tooling. The major lever: 800 MB → 200 MB.
+1. **Multi-stage** — removes the build tooling. This is the big one: 800 MB → 200 MB.
 2. **The base image** — `-jre` instead of `-jdk`, `alpine` instead of `ubuntu`.
-3. **`.dockerignore`** — avoids shipping `.git`, `node_modules`, `target`.
-4. **Grouping install/clean-up** in the same `RUN`.
+3. **`.dockerignore`** — keeps `.git`, `node_modules` and `target` out of the image.
+4. **Combining install and clean-up** in a single `RUN`.
 
-Conversely, what has **no** effect: deleting files in a later layer. They stay in the image (lab 02). And the number of layers, by itself, changes almost nothing about size.
+One thing has **no** effect at all: deleting files in a later layer. They stay in the image (lab 02). And the layer count alone barely moves the size.
 
 ```bash
 podman images --format 'table {{.Repository}}\t{{.Tag}}\t{{.Size}}'
@@ -117,10 +117,10 @@ podman history my-api:1.0 --format 'table {{.Size}}\t{{.CreatedBy}}' | head
 
 Docker builds with **BuildKit**; Podman builds with **Buildah**. Both read the same Dockerfile and offer the same useful features:
 
-- **Unused stages are not built.** A stage from which nothing is copied into the final image is skipped — Buildah prints `[2/3]`, `[3/3]` and skips `[1/3]`.
-- **`--target`** builds up to a given stage: `podman build --target build -t api-build .` gives you the image of the compilation stage, to inspect it.
-- **Persistent caches.** `RUN --mount=type=cache,target=/root/.m2 mvn package` keeps the Maven repository **between builds**, without including it in the image. On a CI agent, the gain is spectacular.
-- **Secrets.** `RUN --mount=type=secret,id=npmrc …` makes a file available during a single instruction, without ever writing it to a layer (lab 08).
+- **Unused stages are never built.** A stage that contributes nothing to the final image is skipped — Buildah prints `[2/3]`, `[3/3]` and `[1/3]` never appears.
+- **`--target`** stops the build at a chosen stage: `podman build --target build -t api-build .` gives you the compilation stage as an image you can inspect.
+- **Persistent caches.** `RUN --mount=type=cache,target=/root/.m2 mvn package` keeps the Maven repository **across builds** without putting it in the image. On a CI agent the speedup is dramatic.
+- **Secrets.** `RUN --mount=type=secret,id=npmrc …` exposes a file for the duration of a single instruction, without ever writing it to a layer (lab 08).
 
 ```dockerfile
 FROM docker.io/library/maven:3.9-eclipse-temurin-21 AS build
@@ -130,11 +130,11 @@ COPY src ./src
 RUN --mount=type=cache,target=/root/.m2 mvn -q package -DskipTests
 ```
 
-> **Podman** — A visible difference: BuildKit builds independent stages **in parallel**, Buildah builds them one after the other. Another: the `# syntax=docker/dockerfile:1` line, which enables the extended syntax in Docker, is simply **ignored** by Buildah — the `--mount`s work without it. And the `type=cache` cache lives in your user storage (`~/.local/share/containers/storage`), not in a daemon: two users of the same CI server do not share it.
+> **Podman** — One visible difference: BuildKit builds independent stages **in parallel**, Buildah builds them one at a time. Another: Buildah simply **ignores** the `# syntax=docker/dockerfile:1` line that enables extended syntax in Docker — the `--mount` options work without it. And the `type=cache` data lives in your user storage (`~/.local/share/containers/storage`), not in a daemon: two users on the same CI server each have their own.
 
 ## 6. Spring Boot: the layers of the JAR
 
-A Spring Boot JAR weighs 50 MB, of which 45 MB are dependencies that almost never change and 5 MB of code that changes at every commit. Copied as a block, it forms a single 50 MB layer retransferred in full at every deployment. Spring Boot knows how to split itself:
+A Spring Boot JAR weighs 50 MB: 45 MB of dependencies that almost never change, and 5 MB of code that changes with every commit. Copied as one block, it becomes a single 50 MB layer that every deployment transfers in full. Spring Boot can split it for you:
 
 ```dockerfile
 FROM docker.io/library/eclipse-temurin:21-jre-alpine AS extract
@@ -151,27 +151,27 @@ COPY --from=extract /app/extracted/application/ ./
 ENTRYPOINT ["java","-jar","app.jar"]
 ```
 
-The dependencies form a stable layer, the code a small volatile layer: deployment only transfers a few MB. Remember the **principle**, which is that of lab 04 applied to the content of a JAR.
+The dependencies become a stable layer, the code a small volatile one: a deployment now transfers just a few MB. What matters is the **principle** — lab 04's layer-ordering rule, applied inside a JAR.
 
 ## 7. In the workplace
 
-- **One Dockerfile per service**, multi-stage, versioned with the code. CI needs neither Maven nor Node: `podman build` (or `docker build`) is enough, which guarantees that the CI build and the workstation build are identical.
-- **Tests** often run in a dedicated stage (`RUN mvn test`), so that a red test fails the image build.
-- **Vulnerability scanning** (Trivy, Grype) applies to the final image. A minimal image yields a short report, hence one actually acted upon — a 1 GB image yields 300 CVEs nobody will read.
-- **The final image runs as non-root**, on a port > 1024, without a shell if possible.
+- **One Dockerfile per service**, multi-stage, versioned alongside the code. CI needs neither Maven nor Node: `podman build` (or `docker build`) is enough, so the CI build and the workstation build are guaranteed identical.
+- **Tests** often run in a dedicated stage (`RUN mvn test`), so a red test fails the image build.
+- **Vulnerability scanning** (Trivy, Grype) targets the final image. A minimal image yields a short report that someone actually reads — a 1 GB image yields 300 CVEs that nobody will.
+- **The final image runs as non-root**, on a port above 1024, without a shell where possible.
 
 ---
 
 ## Remember
 
-- What builds must not run: that is the whole point of multi-stage.
-- Several `FROM`s = several stages; only the last becomes the image, `COPY --from` fetches the artefact into it.
-- Node has no place in the final image of an Angular front end: static content is served by nginx.
-- `-jre` rather than `-jdk`, `alpine` if native dependencies allow it, distroless if you accept losing the shell.
-- Alpine uses `musl`, not `glibc`: validate with a test, never on principle.
-- BuildKit and Buildah offer `--target`, persistent caches and build secrets; Buildah ignores `# syntax=` and does not parallelise.
-- Deleting a file in a later layer does not reduce the image size.
+- The image that builds your code should never be the image that runs it — that is the whole point of multi-stage.
+- Several `FROM`s mean several stages; only the last becomes the image, and `COPY --from` brings the artefact into it.
+- Node has no place in the final image of an Angular front end: nginx serves the static files.
+- Prefer `-jre` over `-jdk`, `alpine` when native dependencies allow it, and distroless when you can live without a shell.
+- Alpine ships `musl`, not `glibc`: validate with a test, never on principle.
+- BuildKit and Buildah both offer `--target`, persistent caches and build secrets; Buildah ignores `# syntax=` and does not parallelise.
+- Deleting a file in a later layer does not shrink the image.
 
 ## Vocabulary
 
-**stage**: build step opened by a `FROM`. — **`COPY --from`**: fetching files from another stage or another image. — **`--target`**: stop the build at a given stage. — **distroless**: image without shell or package manager. — **musl / glibc**: two implementations of the C library. — **BuildKit / Buildah**: Docker's and Podman's build engines. — **cache mount**: persistent cache between builds, outside the image. — **attack surface**: the set of exploitable components present in the image.
+**stage**: a build step opened by a `FROM`. — **`COPY --from`**: fetches files from another stage or image. — **`--target`**: stops the build at a given stage. — **distroless**: an image with no shell and no package manager. — **musl / glibc**: two implementations of the C library. — **BuildKit / Buildah**: Docker's and Podman's build engines. — **cache mount**: a cache that persists across builds, outside the image. — **attack surface**: the exploitable components present in an image.

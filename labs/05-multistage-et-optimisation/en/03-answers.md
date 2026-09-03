@@ -1,16 +1,16 @@
 # Lab 05 — Commented answers
 
-*Each answer follows the same pattern: the answer, the mechanism, the nuance or pitfall, an example you can check at the terminal.*
+*Each answer follows the same pattern: the answer, the mechanism, the nuance or pitfall, an example you can verify at the terminal.*
 
 ---
 
 ### Question 1 — 950 MB refused by security
 
-**Answer.** (1) **The source code is in the image**: anyone who pulls the image reads the application — and often local configuration files. (2) **The attack surface**: JDK, Maven, `git`, `curl`, a full shell, hundreds of Debian packages — as many tools for an attacker who obtains code execution, and a 300-CVE scan report nobody will handle. (3) **The `~/.m2` repository** contains the downloaded artefacts and, frequently, a `settings.xml` with the credentials of the private Maven repository. The hardest to fix without multi-stage is (2): you can `rm` the sources and `.m2` (badly: the layers keep them, lab 02), but you cannot remove the JDK from an image that starts from a JDK image.
+**Answer.** (1) **The source code ships with the image**: anyone who pulls it can read the application — and often local configuration files too. (2) **The attack surface**: JDK, Maven, `git`, `curl`, a full shell, hundreds of Debian packages — each one a tool for an attacker who gains code execution, and together a 300-CVE scan report that nobody will work through. (3) **The `~/.m2` repository** holds the downloaded artefacts and, frequently, a `settings.xml` with the credentials for the private Maven repository. Without multi-stage, (2) is the hardest to fix: you can `rm` the sources and `.m2` (poorly — the layers keep them, lab 02), but you cannot strip the JDK out of an image that starts from a JDK image.
 
-**Why.** The final image is the last `FROM` plus what you add to it; you cannot "subtract" the base image. Only a second `FROM` on a minimal base, with `COPY --from`, changes the base.
+**Why.** The final image is the last `FROM` plus whatever you add on top; there is no way to "subtract" the base image. Only a second `FROM` on a minimal base, combined with `COPY --from`, changes the base.
 
-**Nuance.** Size itself has an operational cost (pull time on an incident, registry storage), but it is the weakest argument in front of a security officer — content matters more than weight.
+**Nuance.** Size does carry an operational cost (pull time during an incident, registry storage), but it is the weakest argument to bring to a security officer — what the image contains matters more than what it weighs.
 
 **Example.**
 ```bash
@@ -21,11 +21,11 @@ podman run --rm --entrypoint sh api-mono:1.0 -c 'ls /app; javac -version; ls ~/.
 
 ### Question 2 — Three `FROM`s
 
-**Answer.** The **last** `FROM` produces the final image; the two others are temporary environments, destroyed at the end of the build (only their cache remains). If no `COPY --from` (nor a later `FROM`) references the second stage, Buildah **does not build it at all**: it ignores it. You see it in the output: the stages are numbered `[1/3]`, `[2/3]`, `[3/3]`, and the number of the unused stage never appears.
+**Answer.** The **last** `FROM` produces the final image; the other two are temporary environments, destroyed when the build ends (only their cache survives). If no `COPY --from` (and no later `FROM`) references the second stage, Buildah **skips it entirely** — it is never built. The output shows it: the stages are numbered `[1/3]`, `[2/3]`, `[3/3]`, and the number of the unused stage never appears.
 
-**Why.** The engine first computes the dependency graph between stages from the `--from`s, then only builds what leads to the target (the last stage, or `--target`).
+**Why.** The engine first derives the dependency graph between stages from the `--from` references, then builds only what leads to the target (the last stage, or the one named by `--target`).
 
-**Nuance.** BuildKit does the same and additionally builds independent stages in parallel. An "unused" stage has a legitimate use: a test stage (`RUN mvn test`) that is only built with `--target test` in CI.
+**Nuance.** BuildKit does the same, and on top of that builds independent stages in parallel. An "unused" stage has a legitimate purpose: a test stage (`RUN mvn test`) that CI builds only with `--target test`.
 
 **Example.**
 ```bash
@@ -36,17 +36,17 @@ podman build -f Dockerfile.unused -t u . 2>&1 | grep STEP     # [2/3] and [3/3] 
 
 ### Question 3 — 420 MB and the sources
 
-**Answer.** `COPY --from=build /app /app` copies **the whole working directory** of the `build` stage: `Api.java`/`src`, `pom.xml`, `target/` with its classes, and the JAR. Fix: copy only the artefact.
+**Answer.** `COPY --from=build /app /app` copies **the entire working directory** of the `build` stage: `Api.java`/`src`, `pom.xml`, `target/` with its classes, and the JAR. Fix: copy only the artefact.
 
 ```dockerfile
 COPY --from=build /app/target/api.jar /app/api.jar
 ```
 
-(and adapt the `ENTRYPOINT` to `/app/api.jar`.)
+(and adjust the `ENTRYPOINT` to `/app/api.jar`.)
 
-**Why.** Multi-stage filters nothing by itself: it puts into the final image only what `COPY --from` asks for. Asking for a folder is asking for its whole content.
+**Why.** Multi-stage filters nothing on its own: the final image receives exactly what `COPY --from` asks for. Ask for a folder, and you get everything in it.
 
-**Nuance.** Even once fixed, does the image still contain a `.m2`? No — `.m2` is in `/root` of the build stage, not in `/app`. But that is luck, not a guarantee: the rule is to copy **named files**.
+**Nuance.** Does the fixed image still contain a `.m2`? No — `.m2` sits in `/root` of the build stage, not in `/app`. But that is luck, not a guarantee. The rule: copy **named files**.
 
 **Example.**
 ```bash
@@ -57,26 +57,26 @@ podman run --rm --entrypoint ls api-multi:1.0 /src     # No such file or directo
 
 ### Question 4 — `ng serve` in production
 
-**Answer.** Four reasons: (1) `ng serve` is a **development** server — unoptimised, without compression or HTTP caching, explicitly documented as not intended for production; (2) the image contains **Node, the sources and `node_modules`** (often > 1 GB): attack surface and code leak; (3) the build is not done **once** but at every start, in "watch" mode, with *source maps* enabled; (4) no separation between the application and its tooling — a vulnerable development dependency is in production. Instead: `ng build --configuration production` in a Node stage, then `COPY --from` of the `dist/…/browser` folder into an `nginx:alpine` image with an nginx configuration that returns `index.html` for Angular routes.
+**Answer.** Four reasons: (1) `ng serve` is a **development** server — unoptimised, no compression, no HTTP caching, and its own documentation says it is not meant for production; (2) the image contains **Node, the sources and `node_modules`** (often over 1 GB): a large attack surface and a code leak; (3) the build does not happen **once** but at every start, in watch mode, with *source maps* enabled; (4) the application and its tooling are not separated — a vulnerable development dependency runs in production. Instead: run `ng build --configuration production` in a Node stage, then `COPY --from` the `dist/…/browser` folder into an `nginx:alpine` image, with an nginx configuration that returns `index.html` for Angular routes.
 
-**Why.** A compiled Angular front end is static. Serving it only needs a file server; everything else is build, which belongs to the discarded stage.
+**Why.** A compiled Angular front end is static. Serving it takes nothing more than a file server; everything else is build work, and build work belongs in the discarded stage.
 
-**Nuance.** There is one case where Node stays in production: server-side rendering (Angular SSR / Universal). That is then **another** application, with its own Dockerfile, and still not `ng serve`.
+**Nuance.** There is one case where Node stays in production: server-side rendering (Angular SSR / Universal). That is a **different** application with its own Dockerfile — and still not `ng serve`.
 
 **Example.**
 ```bash
-podman images --format '{{.Repository}} {{.Size}}' | grep -E 'web-multi|node'   # 64 MB against 167 MB (without node_modules!)
+podman images --format '{{.Repository}} {{.Size}}' | grep -E 'web-multi|node'   # 64 MB versus 167 MB (without node_modules!)
 ```
 
 ---
 
 ### Question 5 — `UnsatisfiedLinkError` after Alpine
 
-**Answer.** PDF generation most probably relies on a **native library** (`.so`) compiled for `glibc` — fonts, rendering, compression. Alpine provides `musl`: the loader refuses the library, Java throws `UnsatisfiedLinkError`. The command that would have shown it: `ldd --version` in each image (`musl libc` versus `GLIBC`). The migration should have been tested with the **real jobs** (not only `/actuator/health`), on a staging environment, with a rollback plan — and the decision taken component by component.
+**Answer.** The PDF generation almost certainly depends on a **native library** (`.so`) compiled for `glibc` — fonts, rendering, compression. Alpine ships `musl`: the loader rejects the library, and Java throws `UnsatisfiedLinkError`. The command that would have exposed it: `ldd --version` in each image (`musl libc` versus `GLIBC`). The migration should have been tested against the **real workloads** (not just `/actuator/health`), on a staging environment, with a rollback plan — and decided component by component.
 
-**Why.** A native library is bound to a specific `libc`; it is not portable bytecode. Two weeks of delay, because PDF generation perhaps only runs at month end.
+**Why.** A native library is bound to one specific `libc`; it is not portable bytecode. The two-week delay is no mystery: the PDF job may only run at month end.
 
-**Nuance.** Alternatives exist: the `eclipse-temurin:21-jre-ubi9-minimal` image (Red Hat, `glibc`, ~100 MB), or installing `gcompat` on Alpine (fragile). And this is not specific to Java: Python, Node with native modules, have exactly the same trap.
+**Nuance.** Alternatives exist: the `eclipse-temurin:21-jre-ubi9-minimal` image (Red Hat, `glibc`, ~100 MB), or `gcompat` on Alpine (fragile). Nor is this a Java problem only: Python and Node with native modules fall into exactly the same trap.
 
 **Example.**
 ```bash
@@ -88,11 +88,11 @@ podman run --rm --entrypoint sh docker.io/library/eclipse-temurin:21-jre -c 'ldd
 
 ### Question 6 — Multi-stage and secrets
 
-**Answer.** An `rm` creates a layer that hides the file; the layer that wrote it stays in the image (lab 02). A discarded stage, on the other hand, is **not** in the final image: none of its layers is there. If the secret was only written in a discarded stage, it exists nowhere in the published artefact. Multi-stage does not protect if the secret is **copied** into the final stage (`COPY --from=build /app` with the secret inside), or if the artefact itself absorbed it (an `application.yml` with a password packed into the JAR), or if the secret passes through an `ARG` of the final stage (visible in `history`).
+**Answer.** An `rm` creates a layer that hides the file, but the layer that wrote it stays in the image (lab 02). A discarded stage, by contrast, is **not** part of the final image: none of its layers is there. A secret written only in a discarded stage exists nowhere in the published artefact. Multi-stage stops protecting you when the secret gets **copied** into the final stage (`COPY --from=build /app` with the secret inside), when the artefact itself absorbed it (an `application.yml` with a password packed into the JAR), or when the secret passes through an `ARG` of the final stage (visible in `history`).
 
-**Why.** Final image = layers of the last `FROM` + layers produced by its instructions. A previous stage only contributes what a `COPY --from` extracts from it.
+**Why.** Final image = layers of the last `FROM` + layers produced by its instructions. An earlier stage contributes only what a `COPY --from` extracts from it.
 
-**Nuance.** The modern solution is `RUN --mount=type=secret`: the secret is available during a single instruction, in any stage, without ever becoming a layer. Multi-stage remains the structural guarantee, the *secret mount* the per-instruction guarantee.
+**Nuance.** The modern approach is `RUN --mount=type=secret`: the secret is available for one instruction, in any stage, and never becomes a layer. Multi-stage remains the structural guarantee; the *secret mount* is the per-instruction one.
 
 **Example.**
 ```bash
@@ -104,11 +104,11 @@ podman run --rm sec ls /run/secrets      # No such file or directory
 
 ### Question 7 — JAR as a block versus layers
 
-**Answer.** (a) One 50 MB layer that changes at every build: the `push` and every `pull` transfer **50 MB**. (b) Four layers: dependencies (~45 MB, unchanged), loader (~1 MB, unchanged), snapshots (0), application (~5 MB): deployment transfers **~5 MB**. Ratio 10. (a) remains acceptable because 50 MB on a datacenter network takes one second, because the JRE (180 MB) is shared anyway, and because (b) adds a stage, a different `ENTRYPOINT` (`org.springframework.boot.loader…` or `java -jar` on the folder) and complexity to explain.
+**Answer.** (a) One 50 MB layer that changes at every build: the `push` and every `pull` move **50 MB**. (b) Four layers — dependencies (~45 MB, unchanged), loader (~1 MB, unchanged), snapshots (0), application (~5 MB) — so a deployment moves **~5 MB**. A tenfold difference. Yet (a) remains acceptable: 50 MB crosses a datacenter network in about a second, the JRE (180 MB) is shared either way, and (b) adds an extra stage, a different `ENTRYPOINT` (`org.springframework.boot.loader…` or `java -jar` on the folder), and complexity someone has to explain.
 
-**Why.** Transfer is differential per layer; what counts is the size of the layer that changes, not that of the image.
+**Why.** Transfer happens layer by layer, differentially. What counts is the size of the layer that changed, not the size of the image.
 
-**Nuance.** (b) becomes worthwhile when you deploy often on many nodes, or over a slow network (edge, remote sites). And the principle applies without Spring: separating `lib/` (stable) and `classes/` (volatile) is enough.
+**Nuance.** (b) starts paying off when you deploy frequently to many nodes, or over a slow network (edge, remote sites). The principle also works without Spring: splitting `lib/` (stable) from `classes/` (volatile) is enough.
 
 **Example.**
 ```bash
@@ -119,11 +119,11 @@ podman history api:1.0 --format 'table {{.Size}}\t{{.CreatedBy}}' | head -6   # 
 
 ### Question 8 — 90 seconds turned into 7 minutes
 
-**Answer.** The new agent has an **empty cache**: the build cache (layers) lives on the machine that builds, and a new agent — or an ephemeral agent recreated at every pipeline — starts from zero. The 5 minutes of `dependency:go-offline` are therefore paid again. Two mechanisms: (1) a **cache mount** (`RUN --mount=type=cache,target=/root/.m2`), which keeps the Maven repository on the agent between builds, even when `pom.xml` changes; (2) a **remote cache** — `--cache-from`/`--cache-to` towards the registry — which lets a new agent fetch the layers of a previous build. With rootless Podman, the cache (layers and *cache mounts*) is in `~/.local/share/containers/storage` of the user who builds: an agent that runs each job under a different user or `home`, or that destroys its `home`, never has a cache.
+**Answer.** The new agent starts with an **empty cache**: the build cache (layers) lives on the machine that builds, so a fresh agent — or an ephemeral agent recreated for every pipeline — starts from nothing. The 5 minutes of `dependency:go-offline` get paid all over again. Two mechanisms: (1) a **cache mount** (`RUN --mount=type=cache,target=/root/.m2`), which keeps the Maven repository on the agent between builds, even when `pom.xml` changes; (2) a **remote cache** — `--cache-from`/`--cache-to` pointing at the registry — which lets a fresh agent fetch the layers of a previous build. With rootless Podman, the cache (layers and *cache mounts*) sits in `~/.local/share/containers/storage` of the user who builds: an agent that runs each job under a different user or `home`, or that wipes its `home`, never has a cache.
 
-**Why.** "Nothing changed" is true on the source side, false on the cache side: the cache is a local state of the machine, not a property of the Dockerfile.
+**Why.** "Nothing changed" is true for the sources and false for the cache: the cache is local state on the machine, not a property of the Dockerfile.
 
-**Nuance.** Ephemeral agents are intentional (isolation, reproducibility); the answer is to make the cache **explicit and external**, not to keep long-lived agents. And a `--no-cache` in the pipeline "to be safe" produces exactly this symptom, permanently.
+**Nuance.** Ephemeral agents are a deliberate choice (isolation, reproducibility); the fix is to make the cache **explicit and external**, not to keep agents alive longer. And a `--no-cache` added to the pipeline "just to be safe" produces exactly this symptom — permanently.
 
 **Example.**
 ```bash
@@ -135,11 +135,11 @@ podman info --format '{{.Store.GraphRoot}}'    # where this user's cache lives
 
 ### Question 9 — What you lose with distroless
 
-**Answer.** (1) **`podman exec -it … sh`**: no shell, so no interactive exploration, no `cat` of a configuration file, no `curl localhost:8080/actuator`. Compensation: exposed observability endpoints (`/actuator/health`, `/info`, `/env`), structured and complete logs on `stdout`, and `podman cp` to extract a file. (2) **Diagnostic tools** (`jcmd`, `jstack`, `ps`, `netstat`): nothing to take a *thread dump* or see the sockets. Compensation: a debug *sidecar* container that shares the namespaces (`podman run --pid=container:api --network=container:api debug-image`), or JMX/Actuator tools (`/actuator/threaddump`) exposed on the internal network.
+**Answer.** (1) **`podman exec -it … sh`**: no shell means no interactive exploration, no `cat` on a configuration file, no `curl localhost:8080/actuator`. Teams compensate with exposed observability endpoints (`/actuator/health`, `/info`, `/env`), complete structured logs on `stdout`, and `podman cp` to pull a file out. (2) **Diagnostic tools** (`jcmd`, `jstack`, `ps`, `netstat`): nothing to take a *thread dump* with or to list sockets. Teams compensate with a debug *sidecar* container that shares the namespaces (`podman run --pid=container:api --network=container:api debug-image`), or with JMX/Actuator tooling (`/actuator/threaddump`) exposed on the internal network.
 
-**Why.** Everything the operator uses to get into a container, an attacker uses too. Distroless removes both at once; observability must therefore move **out** of the image.
+**Why.** Every tool an operator uses to get into a container serves an attacker just as well. Distroless removes both at once, so observability has to move **outside** the image.
 
-**Nuance.** Distroless images exist in a `:debug` variant with a busybox shell — useful in staging, forbidden in production. And Kubernetes offers `kubectl debug` with ephemeral containers for exactly this need.
+**Nuance.** Distroless images come in a `:debug` variant with a busybox shell — useful in staging, forbidden in production. And Kubernetes offers `kubectl debug` with ephemeral containers for exactly this need.
 
 **Example.**
 ```bash
@@ -151,11 +151,11 @@ curl -s localhost:18082/actuator/health     # observability goes through HTTP
 
 ### Question 10 — The cache mount, `VOLUME`, and `# syntax=`
 
-**Answer.** The data lives in a **cache folder managed by the build engine** (BuildKit or Buildah), on the building machine — with rootless Podman, in your user storage. It is mounted into the build container **during the instruction only**, then unmounted: nothing is written to a layer, so nothing in the image. A `VOLUME` is the opposite: a declaration in the image which, at **run time**, creates a volume for the container; it has no effect during the build. Without `# syntax=docker/dockerfile:1`: under Docker (recent versions, BuildKit by default), `--mount` works anyway with the current stable syntax; the line only served to force a newer frontend version. Under Podman, the line is **ignored** (Buildah has no frontend) and `--mount` works natively.
+**Answer.** The data lives in a **cache directory managed by the build engine** (BuildKit or Buildah) on the machine that builds — with rootless Podman, in your user storage. It is mounted into the build container **only while the instruction runs**, then unmounted: nothing is written to a layer, so nothing ends up in the image. A `VOLUME` is the opposite: a declaration stored in the image that creates a volume for the container at **run time**, and does nothing during the build. Without `# syntax=docker/dockerfile:1`: recent Docker versions (BuildKit by default) run `--mount` fine with the current stable syntax — the line only existed to force a newer frontend version. Podman **ignores** the line altogether (Buildah has no frontend), and `--mount` works natively.
 
-**Why.** The cache mount is a build-engine mechanism; the `VOLUME` a runtime mechanism. They only share the word "mount".
+**Why.** The cache mount is a build-engine mechanism; `VOLUME` is a runtime mechanism. The word "mount" is all they share.
 
-**Nuance.** The cache mount is not shared between machines or users, and it is not invalidated by content: a corrupted Maven repository stays there. `podman system prune --build-cache`… does not exist yet: you delete the storage or use `id=` to switch cache.
+**Nuance.** The cache mount is not shared between machines or users, and its content is never invalidated: a corrupted Maven repository stays in it. `podman system prune --build-cache`… does not exist yet: you delete the storage, or switch caches with `id=`.
 
 **Example.**
 ```bash
@@ -167,11 +167,11 @@ podman run --rm c ls /root/.m2                                         # absent 
 
 ### Question 11 — "Multi-stage is useless for Angular"
 
-**Answer.** Without multi-stage, the final image is the image in which `ng build` ran: `node:22-alpine` (~170 MB) **plus** `node_modules` (500 MB to 1 GB) **plus** the TypeScript sources **plus** `dist/` — and you still need to add a server to serve `dist/`. With multi-stage: `nginx:alpine` (64 MB) plus a few MB of static files. The gap is 10 to 20 times, and the content changes in nature: no more Node, no sources, no build dependencies.
+**Answer.** Without multi-stage, the final image is the one `ng build` ran in: `node:22-alpine` (~170 MB) **plus** `node_modules` (500 MB to 1 GB) **plus** the TypeScript sources **plus** `dist/` — and you still have to add a server to serve `dist/`. With multi-stage: `nginx:alpine` (64 MB) plus a few MB of static files. That is a factor of 10 to 20, and the content changes in kind: no Node, no sources, no build dependencies.
 
-**Why.** The fact that the *result* is static is precisely the argument **for** multi-stage: since execution needs nothing of what served to build, you might as well keep nothing.
+**Why.** The static result is precisely the argument **for** multi-stage: since running the app needs nothing that built it, there is no reason to keep any of it.
 
-**Nuance.** Without a container, a team can also run `ng build` in CI and copy `dist/` into an nginx image in a single step (`COPY dist/ /usr/share/nginx/html`). That is a "multi-stage" whose first stage is CI — valid, but the build is no longer reproducible from the Dockerfile alone.
+**Nuance.** Without a container build, a team can also run `ng build` in CI and copy `dist/` into an nginx image in a single step (`COPY dist/ /usr/share/nginx/html`). That is a "multi-stage" whose first stage is the CI itself — valid, but the build is no longer reproducible from the Dockerfile alone.
 
 **Example.**
 ```bash
@@ -182,11 +182,11 @@ podman images --format '{{.Repository}} {{.Size}}' | grep -E 'web-multi|node'   
 
 ### Question 12 — `/app/dist: no such file or directory`
 
-**Answer.** The `build` stage has `WORKDIR /src`: the build produces `/src/dist`, not `/app/dist`. Fix: `COPY --from=build /src/dist/<project>/browser /usr/share/nginx/html` (the sub-folder depends on the Angular version and the project name). To diagnose without guessing: `podman build --target build -t dbg .` then `podman run --rm dbg find / -name index.html -path '*dist*'`.
+**Answer.** The `build` stage sets `WORKDIR /src`, so the build produces `/src/dist`, not `/app/dist`. Fix: `COPY --from=build /src/dist/<project>/browser /usr/share/nginx/html` (the sub-folder depends on the Angular version and the project name). To diagnose instead of guessing: `podman build --target build -t dbg .`, then `podman run --rm dbg find / -name index.html -path '*dist*'`.
 
-**Why.** `COPY --from` copies from the stage's file system, with **absolute** paths of that stage. A `WORKDIR` or `dist/` structure error is invisible until you look inside.
+**Why.** `COPY --from` copies from the stage's file system, using **absolute** paths within that stage. A wrong `WORKDIR` or an unexpected `dist/` layout stays invisible until you look inside.
 
-**Nuance.** Since Angular 17, the default output is `dist/<project>/browser/`; before, `dist/<project>/`. `--target` avoids relying on memory.
+**Nuance.** Since Angular 17, the default output is `dist/<project>/browser/`; before that, `dist/<project>/`. `--target` saves you from relying on memory.
 
 **Example.**
 ```bash
@@ -197,11 +197,11 @@ podman build --target build -t dbg . && podman run --rm dbg ls -R /src/dist | he
 
 ### Question 13 — `RUN mvn test` in the Dockerfile
 
-**Answer.** In the build stage, **after** compilation and **before** `package` (or in a single `mvn package` without `-DskipTests`): if a test fails, `RUN` fails, the build stops, no image is produced. Drawback: the tests run in an isolated build container — no JUnit report usable by CI (it is in a discarded stage, unless copied out with `--target` or `--output`), no easily reachable test database (Testcontainers needs an engine), and the image build time includes that of the tests, even when you only wanted to rebuild.
+**Answer.** In the build stage, **after** compilation and **before** `package` (or as a single `mvn package` without `-DskipTests`): a failing test fails the `RUN`, the build stops, and no image is produced. The drawback: the tests run in an isolated build container — CI gets no usable JUnit report (it sits in a discarded stage unless you extract it with `--target` or `--output`), a test database is hard to reach (Testcontainers needs an engine), and the image build time now includes the tests, even when all you wanted was a rebuild.
 
-**Why.** The Dockerfile is a good guarantor ("no image without green tests") but a poor reporting tool.
+**Why.** The Dockerfile makes a good gatekeeper ("no image without green tests") but a poor reporting tool.
 
-**Nuance.** The common compromise: CI runs the tests **and** the image build in two jobs, with the build conditioned on the tests succeeding; the Dockerfile keeps `-DskipTests` to stay fast. You get the report and the guarantee, at the price of a dependency on CI.
+**Nuance.** The common compromise: CI runs the tests **and** the image build as two jobs, with the build gated on the tests passing; the Dockerfile keeps `-DskipTests` to stay fast. You get the report and the guarantee, at the price of depending on CI.
 
 **Example.**
 ```dockerfile
@@ -213,11 +213,11 @@ RUN mvn -q package -DskipTests
 
 ### Question 14 — One 250 MB layer or five layers of 280 MB
 
-**Answer.** The **280 MB image in five layers** deploys faster on a code update: only the volatile layer (a few MB) is transferred, the four others are already on the nodes and in the registry. The 250 MB single-layer image retransfers 250 MB at every version. The answer reverses when the nodes have **nothing** (first deployment, new node, emptied registry, or a tagging strategy that changes everything every time): there, 250 < 280, and the single layer wins — barely.
+**Answer.** The **280 MB image in five layers** deploys faster on a code update: only the volatile layer (a few MB) is transferred; the other four already sit on the nodes and in the registry. The 250 MB single-layer image resends 250 MB with every version. The answer reverses when the nodes have **nothing** yet (first deployment, fresh node, emptied registry, or a tagging strategy that changes everything every time): then 250 < 280 and the single layer wins — barely.
 
-**Why.** The transfer cost is that of the missing layers, not of the image. Layer stability is worth more than their number.
+**Why.** The transfer cost is the cost of the missing layers, not of the image. Layer stability matters more than layer count.
 
-**Nuance.** `--squash` (Buildah) or a minimal base can bring the 280 MB down to 250 without losing the layers: the two criteria are not exclusive. And the gain only exists if the stable layers are **bit-for-bit identical** from one build to the next — build reproducibility required (no unpinned `apt-get update` in a "stable" layer).
+**Nuance.** `--squash` (Buildah) or a smaller base can bring the 280 MB down to 250 without giving up the layers: the two criteria are not mutually exclusive. And the gain only exists if the stable layers are **bit-for-bit identical** from one build to the next — which requires reproducible builds (no unpinned `apt-get update` in a "stable" layer).
 
 **Example.**
 ```bash
