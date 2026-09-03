@@ -35,12 +35,45 @@ Belgique), `en/` (anglais) — et chaque langue produit **4 PDF**, générés à
 | `03-reponses.md` | `03-antwoorden.md` | `03-answers.md` | Corrigé : réponse + mécanisme + nuance + exemple vérifiable. |
 | `04-labo-pratique.md` | `04-praktijklabo.md` | `04-hands-on-lab.md` | Manipulation guidée au terminal, sorties réelles. |
 
-**Le français est la version maîtresse** : on écrit et on valide en FR, puis on traduit
-NL et EN en gardant la même structure, les mêmes commandes et les mêmes sorties. Les
-termes techniques sans bon équivalent restent en anglais dans les trois langues (*image*,
-*layer*, *registry*, *bind mount*, *build context*, *rootless*, *digest*…). Le NL est un
-néerlandais standard lisible en Belgique (tutoiement « je », pas de flandricismes
-gratuits).
+**Le français est la version maîtresse** : on écrit et on valide en FR, puis on produit
+les versions NL et EN. Les termes techniques sans bon équivalent restent en anglais dans
+les trois langues (*image*, *layer*, *registry*, *bind mount*, *build context*,
+*rootless*, *digest*…).
+
+### Règles de traduction NL/EN
+
+**On traduit le sens, jamais la phrase.** Une version NL ou EN doit se lire comme si elle
+avait été écrite nativement dans cette langue. Test final obligatoire avant de générer les
+PDF : relire le document NL/EN **sans** le FR à côté ; si la phrase française se devine
+sous la traduction (ordre des mots, ponctuation, images), on réécrit le passage.
+
+- **Reste identique au FR** : la structure et la numérotation des sections, les tableaux,
+  les étiquettes d'encadrés (via leurs équivalents convenus, section 3), les commandes
+  (mêmes outils, mêmes options, même ordre) et les **sorties réelles des outils**
+  (messages d'erreur, tailles, statuts — produits en anglais par les outils, ils restent
+  tels quels dans les trois langues).
+- **Est localisé** : ce que l'apprenant tape ou nomme lui-même — noms de conteneurs et de
+  fichiers, chaînes des `echo`, commentaires pédagogiques (`veilleur` → `waker` / `watcher`,
+  `notes.txt` → `notes.txt`/`notities.txt` selon la langue…).
+- **S'adapte librement** : le découpage des phrases (casser les phrases françaises à
+  deux-points et tirets cadratins en deux ou trois phrases courtes), l'ordre des mots, les
+  métaphores, anecdotes et traits d'esprit (trouver l'équivalent naturel de la langue
+  cible, ou supprimer — ne jamais transposer mot à mot), l'emphase (le « **LE** canal » à
+  la française ne devient jamais `HET`/`THE` en capitales : on reformule, p. ex. *the one
+  configuration channel that matters*).
+- **EN** : style *technical writing* — phrases sujet-verbe-complément directes, verbes
+  forts, voix active ; pas de phrases nominales, d'appositions en tête de phrase ni
+  d'inversions rhétoriques ; les récits historiques au prétérit, jamais au présent
+  historique.
+- **NL** : néerlandais standard naturel, lisible en Belgique — tutoiement « je », phrases
+  courtes, ordre des mots naturel, pas de flandricismes gratuits ni de tournures calquées
+  du français.
+- **Faux amis interdits** (déjà rencontrés — la liste s'allonge au besoin) :
+  « ponctuellement » ne se traduit **jamais** par `punctueel` (NL) ni `punctually` (EN)
+  — ces mots signifient « à l'heure » ; dire `waar nodig` / `alleen wanneer het nodig is`,
+  `when needed` / `case by case`. « Sans appel » ≠ `without appeal` (dire `no reprieve`,
+  `final`). « Interlocuteur » ≠ `interlocutor` (dire `no one to talk to`). « Grille de
+  lecture » ≠ `reading grid` (dire `mental model`, `frame`).
 
 Plus, si nécessaire :
 
