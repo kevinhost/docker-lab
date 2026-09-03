@@ -1,18 +1,18 @@
 # Lab 01 — Antwoorden met toelichting
 
-*Elk antwoord volgt hetzelfde schema: het antwoord, het mechanisme, de nuance of valkuil, een voorbeeld dat je aan de terminal kunt nagaan.*
+*Elk antwoord volgt hetzelfde stramien: het antwoord, het mechanisme, de nuance of valkuil, en een voorbeeld dat je zelf aan de terminal kunt controleren.*
 
 ---
 
 ### Vraag 1 — "Een container is een kleine VM"
 
-**Antwoord.** Fout op het essentiële punt: een container bevat **geen besturingssysteem** en heeft **geen eigen kernel**. Het is een proces van de host, geïsoleerd door *namespaces* en beperkt door *cgroups*, uitgevoerd door de kernel van de host.
+**Antwoord.** Fout op het essentiële punt: een container bevat **geen besturingssysteem** en heeft **geen eigen kernel**. Het is een proces van de host, geïsoleerd door *namespaces*, begrensd door *cgroups* en uitgevoerd door de kernel van de host.
 
-**Waarom.** Een VM start een kernel, dan een `init`, dan tientallen systeemdiensten (logging, cron, SSH, netwerk…) nog voor je applicatie start: vandaar de seconden of minuten opstart en de GB's schijf. Een container start daar niets van: de kernel draait al, we vragen hem enkel namespaces aan te maken en **één** proces te starten. De opstartkost is die van een `fork` + `exec`, enkele milliseconden; de schijfkost is die van enkel de bibliotheken die de applicatie nodig heeft.
+**Waarom.** Een VM start eerst een kernel, dan een `init`, dan tientallen systeemdiensten (logging, cron, SSH, netwerk…) — en pas daarna je applicatie. Vandaar de seconden of minuten opstarttijd en de gigabytes schijfruimte. Een container start niets van dat alles: de kernel draait al, en we vragen hem alleen om namespaces aan te maken en **één** proces te lanceren. De opstartkost is die van een `fork` + `exec`, enkele milliseconden; de schijfkost beperkt zich tot de bibliotheken die de applicatie echt nodig heeft.
 
-> **Linux** — `fork` dupliceert het huidige proces, `exec` vervangt de inhoud ervan door een ander programma. Zo wordt *elk* Linux-proces geboren, `podman run` inbegrepen: Podman dupliceert zichzelf, de kloon stapt in zijn namespaces en voert dan jouw commando uit. Een container wordt precies zo geboren als een `ls`.
+> **Linux** — `fork` dupliceert het lopende proces, `exec` vervangt de inhoud ervan door een ander programma. Zo ontstaat *elk* Linux-proces, `podman run` inbegrepen: Podman dupliceert zichzelf, de kloon stapt in zijn namespaces en voert daarna jouw commando uit. Een container komt precies zo ter wereld als een `ls`.
 
-**Nuance.** De intuïtie "lichte VM" is niet absurd voor een *gebruiker*: je krijgt wel degelijk een `/`, een `hostname`, een IP, een `root`. Ze wordt gevaarlijk zodra het over beveiliging gaat: waar de hypervisor van een VM een echte grens is, deelt een container de kernel — een kernelfout doorkruist die grens. En op Windows is de "lichtheid" relatief: er is wel degelijk een VM, WSL 2, maar één enkele voor al je containers.
+**Nuance.** Voor een *gebruiker* is de intuïtie "lichte VM" niet eens zo gek: je krijgt wel degelijk een `/`, een `hostname`, een IP en een `root`. Gevaarlijk wordt ze zodra het over beveiliging gaat. De hypervisor van een VM is een echte grens; een container deelt de kernel, en één kernelfout gaat dwars door die grens heen. En op Windows is de "lichtheid" relatief: er draait wel degelijk een VM, WSL 2 — maar één enkele voor al je containers samen.
 
 **Voorbeeld.**
 ```bash
@@ -24,11 +24,11 @@ podman run -d nginx:alpine                # ~64 MB image, PID zichtbaar op de ho
 
 ### Vraag 2 — 250 MB "zonder OS"
 
-**Antwoord.** De image bevat de **userland** van een distributie: `/bin/sh`, `libc`, `coreutils`, de PostgreSQL-binaries, de configuratie. Wat **ontbreekt**, is de **kernel** — en daarmee alles wat alleen bij het opstarten bestaat: bootloader, `initrd`, kernelmodules, `systemd`, stuurprogramma's, hardwarebeheer.
+**Antwoord.** De image bevat de **userland** van een distributie: `/bin/sh`, `libc`, `coreutils`, de PostgreSQL-binaries, de configuratie. Wat **ontbreekt**, is de **kernel** — en daarmee alles wat alleen tijdens het booten bestaat: bootloader, `initrd`, kernelmodules, `systemd`, drivers, hardwarebeheer.
 
-**Waarom.** Een Linux-programma roept de kernel aan via systeemaanroepen (`open`, `read`, `fork`). Het hoeft geen kernel mee te nemen, het moet er alleen een vinden: die van de host volstaat. De image levert dus alleen wat erboven ontbreekt.
+**Waarom.** Een Linux-programma praat met de kernel via systeemaanroepen (`open`, `read`, `fork`). Het hoeft dus geen kernel mee te brengen; het moet er alleen een vinden, en die van de host volstaat. De image levert enkel wat er bovenop nog ontbreekt.
 
-**Nuance.** Daarom kunnen een "Alpine"- en een "Debian"-image naast elkaar draaien op dezelfde Ubuntu WSL: drie userlands, één kernel. En daarom draait een Linux-image niet op een Windows-kernel — vandaar WSL.
+**Nuance.** Daarom kunnen een "Alpine"- en een "Debian"-image probleemloos naast elkaar draaien op dezelfde Ubuntu onder WSL: drie userlands, één kernel. En om dezelfde reden draait een Linux-image niet op een Windows-kernel — vandaar WSL.
 
 **Voorbeeld.**
 ```bash
@@ -41,11 +41,11 @@ podman run --rm alpine uname -r                        # STRIKT dezelfde kernel
 
 ### Vraag 3 — Twee nginx-containers, twee verschillende `ps`
 
-**Antwoord.** De **`pid`-namespace**. Elke container krijgt zijn eigen PID-tabel: zijn hoofdproces krijgt daar nummer 1 en het kan geen enkele externe PID zien.
+**Antwoord.** De **`pid`-namespace**. Elke container krijgt een eigen PID-tabel: zijn hoofdproces krijgt daarin nummer 1, en geen enkele externe PID is zichtbaar.
 
-**Waarom.** Een proces zien is een voorwaarde om erop in te werken (`kill`, `/proc/<pid>`). Door de zichtbaarheid weg te nemen, neemt de kernel de facto het vermogen weg om langs die weg schade aan te richten. Op de host bestaan die processen wel degelijk, met echte PID's.
+**Waarom.** Wie een proces niet ziet, kan er ook niets mee doen (`kill`, `/proc/<pid>`). Door het zicht weg te nemen, ontneemt de kernel de facto de mogelijkheid om langs die weg schade aan te richten. Op de host bestaan die processen gewoon, met echte PID's.
 
-**Nuance.** Het is geen beveiliging "in de strikte zin" omdat het **geen ondoordringbare grens** is: het is een zichtbeperking, opgelegd door dezelfde kernel als die van de container. Een container gestart met `--pid=host` of `--privileged` krijgt het volledige zicht terug, en een kernelfout omzeilt het mechanisme. De namespace isoleert; hij verdedigt niet. In rootless-modus voegt de `user`-namespace een echte barrière van *rechten* toe bovenop die barrière van *zicht*.
+**Nuance.** Beveiliging "in de strikte zin" is het niet, want de grens is **niet ondoordringbaar**: het is een zichtbeperking, opgelegd door dezelfde kernel die ook de container draait. Start je een container met `--pid=host` of `--privileged`, dan is het volledige zicht terug, en een kernelfout omzeilt het mechanisme sowieso. De namespace isoleert; hij verdedigt niet. In rootless-modus legt de `user`-namespace daar wel een echte barrière van *rechten* bovenop.
 
 **Voorbeeld.**
 ```bash
@@ -60,11 +60,11 @@ podman rm -f -t 0 web
 
 ### Vraag 4 — `Cannot connect to the Docker daemon`
 
-**Antwoord.** Bij je collega heeft de client gewerkt: hij toonde zijn versie, probeerde dan de socket `/var/run/docker.sock` te openen om de **server** te bevragen, en faalde. Twee waarschijnlijke oorzaken: (1) de daemon is niet gestart, (2) zijn gebruiker heeft geen rechten op de socket. Bij jou is die melding onmogelijk: Podman heeft **geen daemon** en contacteert geen enkele socket; elk commando doet het werk zelf, onder jouw gebruiker.
+**Antwoord.** Bij je collega heeft de client zijn werk gedaan: hij toonde zijn versie, probeerde daarna de socket `/var/run/docker.sock` te openen om de **server** te bereiken, en strandde daar. Twee waarschijnlijke oorzaken: (1) de daemon draait niet, (2) zijn gebruiker heeft geen rechten op de socket. Bij jou kan deze melding niet voorkomen: Podman heeft **geen daemon** en opent geen enkele socket; elk commando doet het werk zelf, onder jouw gebruiker.
 
-**Waarom.** Elk Docker-commando is een netwerkoproep naar `dockerd`. Het commando wijzigen verandert niets, want niemand heeft het nog gelezen: het probleem zit stroomopwaarts. Podman is een gewoon programma: als het start, werkt het.
+**Waarom.** Elk Docker-commando is in wezen een netwerkoproep naar `dockerd`. Aan het commando sleutelen heeft geen zin, want niemand heeft het al gelezen: het probleem zit een stap eerder. Podman daarentegen is een gewoon programma: als het start, werkt het.
 
-**Nuance.** Er zijn twee gevallen waarin Podman *wel* een server heeft: `podman --remote` (of de variabele `CONTAINER_HOST`) dat met een `podman system service` op afstand praat, en `podman machine` onder Windows/macOS, waar de Windows-client met een VM praat. Je zou dan `unable to connect to Podman socket` zien. Onder WSL met Podman in Ubuntu geïnstalleerd, zit je in geen van beide gevallen.
+**Nuance.** In twee gevallen heeft Podman *wel* een server: `podman --remote` (of de variabele `CONTAINER_HOST`), dat met een `podman system service` op afstand praat, en `podman machine` op Windows/macOS, waar de Windows-client met een VM praat. Dan zou je `unable to connect to Podman socket` zien. Met Podman rechtstreeks in Ubuntu onder WSL zit je in geen van beide situaties.
 
 **Voorbeeld.**
 ```bash
@@ -82,9 +82,9 @@ podman --remote version             # Error: unable to connect to Podman socket 
 
 **Antwoord.** Een image is een verzameling alleen-lezen bestanden plus metadata. Er is geen proces, geen toestand, niets om in te plannen: ze is even inert als een `.zip` met een handleiding erbij.
 
-**Waarom.** Bij `podman run` voegt de engine drie dingen toe: (1) een dunne **schrijflaag** bovenop de alleen-lezen lagen, (2) een set **namespaces en cgroups**, (3) de **uitvoering** van het commando dat in de metadata van de image staat (`ENTRYPOINT`/`CMD`), via de runtime `crun`. Het resultaat van die assemblage is de container.
+**Waarom.** Bij `podman run` voegt de engine drie dingen toe: (1) een dunne **schrijflaag** bovenop de alleen-lezen lagen, (2) een set **namespaces en cgroups**, (3) de **uitvoering** van het commando uit de metadata van de image (`ENTRYPOINT`/`CMD`), via de runtime `crun`. Het resultaat van die assemblage is de container.
 
-**Nuance.** De *aangemaakte* container en de *gestarte* container zijn twee aparte stappen: `podman create` doet alles behalve het proces starten, `podman start` start het. `podman run` is gewoon `create` + `start` (+ `pull` als de image ontbreekt).
+**Nuance.** Een container *aanmaken* en hem *starten* zijn twee aparte stappen: `podman create` doet alles behalve het proces lanceren, `podman start` lanceert het. `podman run` is gewoon `create` + `start` (+ `pull` als de image nog ontbreekt).
 
 **Voorbeeld.**
 ```bash
@@ -98,11 +98,11 @@ podman rm -f -t 0 tmp
 
 ### Vraag 6 — PostgreSQL-gegevens na een `podman rm`
 
-**Antwoord.** Nee, de gegevens zijn verdwenen. En nee, de image is **niet** gewijzigd: ze is strikt identiek voor en na.
+**Antwoord.** Nee, de gegevens zijn weg. En nee, de image is **niet** gewijzigd: ze is voor en na strikt identiek.
 
-**Waarom.** De schrijfacties van een container (via *copy-on-write*) komen terecht in zijn privé-schrijflaag. `podman rm` verwijdert de container **én** die laag. De lagen van de image zijn alleen-lezen: niets van wat een container doet, kan ze wijzigen — dat garandeert dat twee containers van dezelfde image vanuit dezelfde toestand vertrekken.
+**Waarom.** Alles wat een container schrijft, komt (via *copy-on-write*) terecht in zijn eigen schrijflaag. `podman rm` verwijdert de container **én** die laag. De lagen van de image zijn alleen-lezen: niets van wat een container doet, kan ze aantasten. Precies daardoor vertrekken twee containers van dezelfde image gegarandeerd vanuit dezelfde toestand.
 
-**Nuance.** Twee belangrijke correcties. Ten eerste vernietigt `podman stop` niets: een gestopte container behoudt zijn laag, en `podman start` vindt de gegevens terug. Het is wel degelijk `rm` dat vernietigt. Ten tweede declareert de officiële image `postgres` `/var/lib/postgresql/data` als `VOLUME`: de engine maakt dan een **anoniem** volume aan dat de `rm` overleeft — maar zonder naam is het bijna onmogelijk terug te vinden. In de praktijk beschouwt men de gegevens als verloren. Het benoemde volume is het onderwerp van lab 06.
+**Nuance.** Twee belangrijke kanttekeningen. Eén: `podman stop` vernietigt niets. Een gestopte container houdt zijn laag bij, en na `podman start` staan de gegevens er weer. Het is `rm` dat vernietigt. Twee: de officiële `postgres`-image declareert `/var/lib/postgresql/data` als `VOLUME`, waardoor de engine een **anoniem** volume aanmaakt dat de `rm` overleeft — maar zonder naam vind je het amper terug. In de praktijk beschouw je de gegevens als verloren. Benoemde volumes komen aan bod in lab 06.
 
 **Voorbeeld.**
 ```bash
@@ -116,11 +116,11 @@ podman run --rm alpine ls /merk.txt      # No such file or directory: de image i
 
 ### Vraag 7 — Tien containers, hoeveel schijf?
 
-**Antwoord.** Enkele tientallen kilobytes in totaal — niet 10 × 210 MB. Elke container kost alleen zijn schrijflaag, aanvankelijk leeg, plus enkele configuratiebestanden (`hostname`, `resolv.conf`…).
+**Antwoord.** Enkele tientallen kilobytes in totaal — niet 10 × 210 MB. Elke container kost alleen zijn schrijflaag, die leeg begint, plus een handvol configuratiebestanden (`hostname`, `resolv.conf`…).
 
-**Waarom.** De lagen van de image worden alleen-lezen **gedeeld** door alle containers die eruit voortkomen. Het opslagstuurprogramma `overlay` stapelt die lagen en één lege schrijflaag per container; een bestand wordt pas naar die laag gekopieerd op het moment dat het gewijzigd wordt (*copy-on-write*).
+**Waarom.** Alle containers die uit dezelfde image voortkomen, **delen** haar lagen in alleen-lezen modus. De opslagdriver `overlay` stapelt die lagen met daarbovenop één lege schrijflaag per container. Een bestand wordt pas naar die laag gekopieerd op het moment dat het gewijzigd wordt (*copy-on-write*).
 
-**Nuance.** Het antwoord verandert als elke container veel schrijft (logs, tijdelijke bestanden): elke wijziging van een imagebestand kopieert het volledig naar de laag van de container. En `podman ps -s` toont beide cijfers: de eigen grootte en de "virtuele" grootte.
+**Nuance.** Het antwoord verandert zodra elke container veel schrijft (logs, tijdelijke bestanden): wie een bestand uit de image wijzigt, kopieert het integraal naar de laag van de container. `podman ps -s` toont beide cijfers: de eigen grootte en de "virtuele" grootte.
 
 **Voorbeeld.**
 ```bash
@@ -133,11 +133,11 @@ podman rm -f -t 0 t1 t2 t3
 
 ### Vraag 8 — `root` in de container, `1000` op de host
 
-**Antwoord.** De **`user`**-namespace projecteert de identificaties van de container op die van de host: UID 0 van de container *is* jouw UID 1000. Die "root" heeft, tegenover de kernel en de bestanden van de host, alleen jouw rechten: een poging om te schrijven in `/etc/shadow`, gemount vanaf de host, faalt met `Permission denied`, precies alsof je het zelf deed.
+**Antwoord.** De **`user`**-namespace beeldt de ID's van de container af op die van de host: UID 0 in de container *is* jouw UID 1000. Tegenover de kernel en de bestanden van de host heeft die "root" niet meer dan jouw rechten. Een schrijfpoging in `/etc/shadow`, gemount vanaf de host, faalt met `Permission denied` — precies alsof je het zelf probeerde.
 
-**Waarom.** De kernel controleert de rechten met de **echte** identiteit (hostzijde), niet met de identiteit die in de namespace getoond wordt. De UID's 1 tot 65536 van de container worden geprojecteerd op een gereserveerd bereik in `/etc/subuid` (`100000-165535`) dat geen enkel recht heeft op jouw bestanden.
+**Waarom.** De kernel controleert rechten aan de hand van de **echte** identiteit (die aan hostzijde), niet de identiteit die in de namespace getoond wordt. De UID's 1 tot 65536 van de container worden afgebeeld op een gereserveerd bereik in `/etc/subuid` (`100000-165535`), dat op jouw bestanden geen enkel recht heeft.
 
-**Nuance.** Die root *is* root **binnen** zijn namespaces: hij kan pakketten installeren, de rechten van imagebestanden wijzigen, luisteren op poort 80 van de container. Wat hij niet kan, is de grens oversteken. Praktisch gevolg: een bestand dat de container aanmaakt onder UID 999 (de gebruiker `postgres`) verschijnt op je host met UID 100998 — de klassieke *bind mount*-valkuil in rootless-modus (lab 06).
+**Nuance.** Binnen zijn eigen namespaces *is* die root wel degelijk root: hij kan pakketten installeren, rechten van imagebestanden wijzigen en luisteren op poort 80 van de container. Wat hij niet kan, is de grens oversteken. Praktisch gevolg: een bestand dat de container aanmaakt onder UID 999 (de gebruiker `postgres`) verschijnt op je host met UID 100998 — de klassieke *bind mount*-valkuil in rootless-modus (lab 06).
 
 **Voorbeeld.**
 ```bash
@@ -150,11 +150,11 @@ podman run --rm -v /etc:/host alpine sh -c 'echo x >> /host/shadow'   # Permissi
 
 ### Vraag 9 — De groep `docker` en `sudo`
 
-**Antwoord.** Lid zijn van de groep `docker` geeft het recht om naar `/var/run/docker.sock` te schrijven, dus om eender wat te laten uitvoeren door een daemon die als **root** draait: `docker run -v /:/host --privileged` geeft de hele host. Dat is `sudo` zonder wachtwoord, zonder logging en zonder limiet. Met rootless Podman is er noch een root-daemon noch een socket: de gebruiker kan niets meer dan wat hij al kon, en de regel heeft geen voorwerp meer.
+**Antwoord.** Wie in de groep `docker` zit, mag naar `/var/run/docker.sock` schrijven — en dus eender wat laten uitvoeren door een daemon die als **root** draait: `docker run -v /:/host --privileged` levert de hele host uit. Dat is `sudo` zonder wachtwoord, zonder logging en zonder grens. Met rootless Podman is er geen root-daemon en geen socket: de gebruiker kan niets wat hij voordien niet al kon, en de regel is voorwerploos geworden.
 
-**Waarom.** Auditing vereist dat men weet *wie* *wat* gedaan heeft. Een commando dat via de socket passeert, wordt uitgevoerd door `dockerd`, onder de identiteit `root`, zonder spoor dat aan de gebruiker gekoppeld is. `sudo docker …` laat tenminste een regel na in `auth.log`. Rootless Podman gaat verder: de container is een proces van de gebruiker, zichtbaar en toewijsbaar in `ps`.
+**Waarom.** Auditing draait om de vraag *wie* *wat* gedaan heeft. Een commando dat via de socket binnenkomt, wordt uitgevoerd door `dockerd`, onder de identiteit `root`, zonder enig spoor dat naar de gebruiker leidt. `sudo docker …` laat tenminste een regel na in `auth.log`. Rootless Podman gaat nog een stap verder: de container is een proces van de gebruiker zelf, zichtbaar en toewijsbaar in `ps`.
 
-**Nuance.** Rootless Podman heeft een prijs: geen poort < 1024 zonder instelling, een iets trager netwerk in userspace, bepaalde mounts en opties verboden. In productie kom je ook *rootful* Podman tegen (`sudo podman`), dat dan dezelfde voorzorgen als Docker terugbrengt.
+**Nuance.** Rootless Podman heeft ook een prijs: geen poorten onder 1024 zonder extra instelling, een iets trager netwerk in userspace, en sommige mounts en opties zijn uitgesloten. In productie kom je daarnaast *rootful* Podman tegen (`sudo podman`) — en dan gelden weer dezelfde voorzorgen als bij Docker.
 
 **Voorbeeld.**
 ```bash
@@ -177,9 +177,9 @@ podman run --rm -v /:/host alpine cat /host/etc/shadow     # Permission denied
 | `podman rmi nginx:alpine` | `podman image rm nginx:alpine` | image |
 | `podman rm web` | `podman container rm web` | container |
 
-**Waarom.** `ps` en `images` dateren van de eerste Docker-versies (2013), toen de CLI nog geen objecten had: `ps` imiteerde het gelijknamige Unix-commando, `images` was een meervoud. De grammatica `object actie` kwam er in 2017 (Docker 1.13), en Podman nam ze ongewijzigd over. De korte vormen blijven bestaan om niets te breken.
+**Waarom.** `ps` en `images` stammen uit de allereerste Docker-versies (2013), toen de CLI nog geen objecten kende: `ps` bootste het gelijknamige Unix-commando na, `images` was gewoon een meervoud. De grammatica `object actie` kwam er pas in 2017 (Docker 1.13), en Podman nam ze ongewijzigd over. De korte vormen zijn blijven bestaan om niets te breken.
 
-**Nuance.** De lange vorm is de enige volledige: `podman container ls`, `podman image ls`, `podman volume ls`, `podman network ls`, `podman pod ls` volgen hetzelfde patroon, terwijl `podman ps` geen equivalent heeft voor volumes. In scripts: verkies de lange vorm.
+**Nuance.** Alleen de lange vorm is volledig: `podman container ls`, `podman image ls`, `podman volume ls`, `podman network ls` en `podman pod ls` volgen allemaal hetzelfde patroon, terwijl `podman ps` geen tegenhanger heeft voor volumes. Gebruik in scripts dus de lange vorm.
 
 **Voorbeeld.**
 ```bash
@@ -191,11 +191,11 @@ podman image ls --format '{{.Repository}}:{{.Tag}}'
 
 ### Vraag 11 — Twee keer `uname -r`, twee hosts
 
-**Antwoord.** `uname -r` is een systeemaanroep: de waarde komt van de **kernel**, nooit van de image. Onder WSL is de kernel `microsoft-standard-WSL2`, door Microsoft gecompileerd voor de WSL-VM; op een native Ubuntu-server is het de `generic`-kernel uit het Ubuntu-pakket. Een container toont de kernel van de machine die hem uitvoert, welke image ook.
+**Antwoord.** `uname -r` is een systeemaanroep: de waarde komt van de **kernel**, nooit uit de image. Onder WSL is dat de kernel `microsoft-standard-WSL2`, die Microsoft voor de WSL-VM compileert; op een native Ubuntu-server is het de `generic`-kernel uit het Ubuntu-pakket. Een container toont altijd de kernel van de machine die hem uitvoert, welke image je ook gebruikt.
 
-**Waarom.** De container is een proces van de hostkernel; er zit geen kernel in de image (vraag 2). Op Windows is die host niet Windows maar de WSL 2-VM.
+**Waarom.** De container is een proces van de hostkernel, en in de image zit geen kernel (vraag 2). Op Windows is die host niet Windows zelf, maar de WSL 2-VM.
 
-**Nuance.** "Licht" blijft waar: de WSL-VM is **uniek**, één keer gestart, en gedeeld door al je containers; die blijven processen die in milliseconden starten. Wat niet meer waar is, is "helemaal geen VM". Praktische gevolgen: het beschikbare RAM is dat van WSL (`.wslconfig`), en Windows-bestanden (`/mnt/c/…`) gemount in een container zijn traag, omdat ze de grens VM ↔ Windows oversteken. Werk in het Linux-bestandssysteem (`~`).
+**Nuance.** "Licht" blijft kloppen: de WSL-VM is er maar **één**, ze start één keer op en al je containers delen ze; de containers zelf blijven processen die in milliseconden starten. Wat niet meer klopt, is "helemaal geen VM". Praktische gevolgen: het beschikbare RAM is dat van WSL (`.wslconfig`), en Windows-bestanden (`/mnt/c/…`) die je in een container mount, zijn traag omdat elke toegang de grens VM ↔ Windows oversteekt. Werk dus in het Linux-bestandssysteem (`~`).
 
 **Voorbeeld.**
 ```bash
@@ -208,11 +208,11 @@ podman info --format '{{.Host.Kernel}} {{.Host.MemTotal}}'   # het RAM zoals WSL
 
 ### Vraag 12 — Oneindige lus en RAM
 
-**Antwoord.** Nee: de `pid`-namespace verbergt alleen processen. Het mechanisme dat de buren beschermt, is de geheugen-**cgroup**, geactiveerd door `--memory`. Zonder limiet verbruikt de container al het beschikbare RAM; wanneer de kernel niets meer over heeft, doodt de **OOM killer** een proces naar keuze — niet noodzakelijk de schuldige.
+**Antwoord.** Nee: de `pid`-namespace verbergt alleen processen. Het mechanisme dat de buren beschermt, is de geheugen-**cgroup**, die je activeert met `--memory`. Zonder limiet verbruikt de container al het beschikbare RAM, en zodra de kernel niets meer overheeft, doodt de **OOM killer** een proces naar eigen keuze — niet noodzakelijk de schuldige.
 
-**Waarom.** Namespaces en cgroups zijn twee onafhankelijke mechanismen: het ene isoleert het *zicht*, het andere begrenst het *verbruik*. Met `--memory=512m` veroorzaakt een overschrijding de dood van enkel het proces van de container (`Exited (137)`, `OOMKilled: true`), en de rest van de machine merkt er niets van.
+**Waarom.** Namespaces en cgroups zijn twee onafhankelijke mechanismen: het ene isoleert het *zicht*, het andere begrenst het *verbruik*. Met `--memory=512m` sterft bij een overschrijding alleen het proces van de container zelf (`Exited (137)`, `OOMKilled: true`), en de rest van de machine merkt er niets van.
 
-**Nuance.** In rootless-modus is `--memory` alleen mogelijk als `systemd` de controller `memory` aan je gebruiker delegeert — wat op Ubuntu WSL het geval is zodra `systemd=true` geactiveerd is. En voor Java is een cgroup-limiet alleen nuttig als de JVM ze respecteert: sinds Java 10 leest ze de cgroup automatisch (`-XX:MaxRAMPercentage`), maar een `-Xmx` die met de hand te hoog is ingesteld, overschrijdt ze toch.
+**Nuance.** In rootless-modus werkt `--memory` alleen als `systemd` de controller `memory` aan jouw gebruiker delegeert — op Ubuntu onder WSL is dat zo zodra `systemd=true` actief is. En voor Java geldt: een cgroup-limiet helpt alleen als de JVM ze respecteert. Sinds Java 10 leest ze de cgroup automatisch uit (`-XX:MaxRAMPercentage`), maar een handmatig te hoog ingestelde `-Xmx` gaat er alsnog overheen.
 
 **Voorbeeld.**
 ```bash
@@ -226,11 +226,11 @@ podman rm -f -t 0 limiet
 
 ### Vraag 13 — Een image promoveren zonder ze opnieuw te bouwen
 
-**Antwoord.** Twee eigenschappen: **onveranderlijkheid** (een image geïdentificeerd door haar digest verandert nooit) en de **OCI-standaard** (Docker en Podman produceren en lezen exact hetzelfde formaat). Wat in acceptatie getest is, is bit voor bit wat naar productie gaat, welke engine ook. Bij elke stap opnieuw bouwen breekt die garantie: twee builds van dezelfde code geven niet noodzakelijk dezelfde image.
+**Antwoord.** Twee eigenschappen: **onveranderlijkheid** (een image die je via haar digest identificeert, verandert nooit) en de **OCI-standaard** (Docker en Podman schrijven en lezen exact hetzelfde formaat). Wat in acceptatie getest is, gaat bit voor bit identiek naar productie, ongeacht de engine. Bij elke stap opnieuw bouwen breekt die garantie: twee builds van dezelfde code leveren niet noodzakelijk dezelfde image op.
 
-**Waarom.** Een build hangt af van het moment: `apt-get install` neemt de versie van de dag, `FROM eclipse-temurin:21-jre` volgt een bewegende tag, Maven lost versiebereiken op. Tussen de acceptatiebuild en de productiebuild kan een afhankelijkheid gewijzigd zijn — en de validatie in acceptatie is niets meer waard.
+**Waarom.** Een build hangt af van het moment waarop hij draait: `apt-get install` pakt de versie van die dag, `FROM eclipse-temurin:21-jre` volgt een verschuivende tag, Maven lost versiebereiken op. Tussen de acceptatiebuild en de productiebuild kan een afhankelijkheid veranderd zijn — en dan is de validatie in acceptatie niets meer waard.
 
-**Nuance.** Promotie gebeurt niet door `latest` opnieuw te taggen, maar door naar de **digest** te verwijzen (`api@sha256:…`) of naar een onveranderlijke tag (`api:1.4.2`). Lab 02 komt erop terug. En de engine doet er weinig toe: een `podman pull` van een image die met `docker push` gepusht is, is een banaal geval.
+**Nuance.** Promoveren doe je niet door `latest` opnieuw te taggen, maar door te verwijzen naar de **digest** (`api@sha256:…`) of naar een onveranderlijke tag (`api:1.4.2`). Lab 02 gaat daar dieper op in. En de engine maakt nauwelijks uit: een `podman pull` van een image die met `docker push` gepusht werd, is de gewoonste zaak van de wereld.
 
 **Voorbeeld.**
 ```bash
@@ -242,11 +242,11 @@ podman image inspect --format '{{.Digest}}' registry.intern/api:1.4.2
 
 ### Vraag 14 — `alias docker=podman`
 
-**Antwoord.** Zonder voorbehoud waar voor: (1) de hele image-cyclus — `build`, `pull`, `push`, `tag`, `images`, `history`, `inspect`, de Dockerfiles; (2) de levenscyclus van containers — `run`, `ps`, `logs`, `exec`, `stop`, `rm` met hun opties. Onwaar of anders: (a) **geen daemon** — geen `docker.sock`, `--restart=always` overleeft geen herstart zonder `systemd`, `podman rm -f` wacht 10 s; (b) **rootless** — geen poort < 1024 zonder instelling, IP-adressen afwezig met `pasta`, verschoven UID's op *bind mount*-bestanden, `--memory` afhankelijk van cgroup-delegatie.
+**Antwoord.** Klopt zonder voorbehoud voor: (1) de volledige image-cyclus — `build`, `pull`, `push`, `tag`, `images`, `history`, `inspect`, de Dockerfiles; (2) de levenscyclus van containers — `run`, `ps`, `logs`, `exec`, `stop`, `rm`, opties inbegrepen. Klopt niet, of loopt anders: (a) **geen daemon** — geen `docker.sock`, `--restart=always` overleeft geen herstart zonder `systemd`, `podman rm -f` wacht 10 s; (b) **rootless** — geen poorten onder 1024 zonder extra instelling, geen IP-adressen met `pasta`, verschoven UID's op *bind mount*-bestanden, `--memory` alleen met cgroup-delegatie.
 
-**Waarom.** Podman heeft het *oppervlak* van Docker gekopieerd (de CLI, het formaat) maar niet zijn *architectuur*. Alles wat alleen van het oppervlak afhangt, is identiek; alles wat raakt aan "wie voert uit, met welke rechten, onder toezicht van wie" loopt uiteen.
+**Waarom.** Podman heeft het *oppervlak* van Docker overgenomen (de CLI, het formaat), maar niet de *architectuur*. Alles wat alleen van dat oppervlak afhangt, is identiek; alles wat raakt aan "wie voert uit, met welke rechten, onder wiens toezicht" loopt uiteen.
 
-**Nuance.** De verschillen zijn geen gebreken: elk is de tegenhanger van een veiligheidskeuze. En Docker Compose werkt met Podman (`podman compose`, lab 09), tegen de prijs van enkele configuratieregels.
+**Nuance.** De verschillen zijn geen tekortkomingen: elk ervan is de keerzijde van een veiligheidskeuze. En Docker Compose werkt ook met Podman (`podman compose`, lab 09), mits enkele regels configuratie.
 
 **Voorbeeld.**
 ```bash
