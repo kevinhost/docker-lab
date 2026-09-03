@@ -164,7 +164,7 @@ podman exec db psql -U postgres -c '\dt'                                        
 
 **Waarom.** Podman wilde geen dienstbeheerder heruitvinden: Linux heeft er al een, systemd, met zijn afhankelijkheden, zijn logs en zijn opstart bij het booten. Een *restart policy* van Podman dekt alleen de duur van één sessie.
 
-**Nuance.** In rootless-modus heb je daarbovenop `loginctl enable-linger <gebruiker>` nodig, zodat de diensten van die gebruiker ook zonder open sessie starten. Op een WSL-werkpost is dat zelden nodig: ontwikkelcontainers hoeven geen reboot te overleven.
+**Nuance.** In rootless-modus heb je daarbovenop `loginctl enable-linger <gebruiker>` nodig, zodat de diensten van die gebruiker ook zonder open sessie starten. Op een ontwikkelmachine onder WSL is dat zelden nodig: ontwikkelcontainers hoeven geen reboot te overleven.
 
 **Voorbeeld.**
 ```ini

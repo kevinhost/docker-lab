@@ -189,7 +189,7 @@ skopeo copy docker://docker.io/library/node:22-alpine docker://registry.intern/b
 **Voorbeeld.**
 ```bash
 podman push --tls-verify=false localhost:5000/basis/demo:1.0       # expliciet, zichtbaar in de geschiedenis
-# OF, alleen voor een ontwikkelwerkpost:
+# OF, alleen voor een ontwikkelmachine:
 printf '[[registry]]\nlocation = "localhost:5000"\ninsecure = true\n' >> ~/.config/containers/registries.conf
 ```
 

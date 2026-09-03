@@ -275,7 +275,7 @@ podman run --rm -d --restart=always nginx:alpine
 
 **Observeer** `Error: the --rm option conflicts with --restart, when the restartPolicy is not "" and "no"`.
 
-> **Podman** — En na een reboot? Test het zelf: `podman run -d --restart=always --name overlever nginx:alpine`, sluit **al** je Ubuntu-vensters en voer vanuit PowerShell `wsl --shutdown` uit. Open Ubuntu opnieuw: `podman ps` is leeg. Niemand heeft het beleid herlezen — er is geen daemon. Op een server neemt `systemd` die rol over via een Quadlet-bestand (lab 10). Op je werkpost is dit prima: ontwikkelcontainers hoeven geen herstart te overleven. Ruim daarna op met `podman rm -f -t 0 overlever`.
+> **Podman** — En na een reboot? Test het zelf: `podman run -d --restart=always --name overlever nginx:alpine`, sluit **al** je Ubuntu-vensters en voer vanuit PowerShell `wsl --shutdown` uit. Open Ubuntu opnieuw: `podman ps` is leeg. Niemand heeft het beleid herlezen — er is geen daemon. Op een server neemt `systemd` die rol over via een Quadlet-bestand (lab 10). Op je eigen machine is dit prima: ontwikkelcontainers hoeven geen herstart te overleven. Ruim daarna op met `podman rm -f -t 0 overlever`.
 
 ---
 

@@ -235,7 +235,7 @@ podman rm -f -t 0 limiet
 **Voorbeeld.**
 ```bash
 podman image inspect --format '{{.Digest}}' registry.intern/api:1.4.2
-# Dezelfde digest op de werkpost (Podman), in acceptatie (Docker) en in productie (rootful Podman).
+# Dezelfde digest op je eigen machine (Podman), in acceptatie (Docker) en in productie (rootful Podman).
 ```
 
 ---
