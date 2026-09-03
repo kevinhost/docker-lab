@@ -73,7 +73,7 @@ echo $$
 ps -p 1 -o pid,comm
 ```
 
-**Observe**: an almost empty `ps` (your `bash`, the `ps` itself); your shell's PID (`echo $$`); and process 1: `systemd`.
+**Observe**: an almost empty `ps` (your `bash`, the `ps` itself); your shell's PID (`echo $$`); and process 1: `systemd`. `ps` alone only shows the processes of *your terminal*; all the others (`ps -ef` lists them) run without a terminal — most of them are **daemons**, service processes like `systemd` itself, whose names often end in "d".
 
 Now launch a process that lasts, in the background:
 

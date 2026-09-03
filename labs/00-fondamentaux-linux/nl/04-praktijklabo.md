@@ -73,7 +73,7 @@ echo $$
 ps -p 1 -o pid,comm
 ```
 
-**Observeer**: een bijna lege `ps` (jouw `bash`, de `ps` zelf); het PID van je shell (`echo $$`); en proces 1: `systemd`.
+**Observeer**: een bijna lege `ps` (jouw `bash`, de `ps` zelf); het PID van je shell (`echo $$`); en proces 1: `systemd`. `ps` alleen toont enkel de processen van *jouw terminal*; alle andere (`ps -ef` toont ze) draaien zonder terminal — voor het merendeel zijn dat **daemons**, dienstprocessen zoals `systemd` zelf, met een naam die vaak op "d" eindigt.
 
 Start nu een proces dat blijft duren, op de achtergrond:
 

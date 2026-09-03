@@ -73,7 +73,7 @@ echo $$
 ps -p 1 -o pid,comm
 ```
 
-**Observez** : `ps` presque vide (votre `bash`, le `ps` lui-même) ; le PID de votre shell (`echo $$`) ; et le processus 1 : `systemd`.
+**Observez** : `ps` presque vide (votre `bash`, le `ps` lui-même) ; le PID de votre shell (`echo $$`) ; et le processus 1 : `systemd`. `ps` seul ne montre que les processus de *votre terminal* ; tous les autres (`ps -ef` les liste) tournent sans terminal — ce sont pour la plupart des **daemons**, des processus de service comme `systemd` lui-même, dont le nom finit souvent par « d ».
 
 Lancez maintenant un processus qui dure, en arrière-plan :
 
