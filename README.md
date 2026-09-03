@@ -1,6 +1,6 @@
 # Docker Lab — série de labos Docker/Podman en ligne de commande
 
-Dix labos d'auto-formation pour comprendre Docker **tel qu'il est utilisé en entreprise**
+Un labo 0 de fondamentaux Linux puis dix labos d'auto-formation pour comprendre Docker **tel qu'il est utilisé en entreprise**
 sur une stack Spring Boot + Angular + PostgreSQL — en pratiquant avec **Podman sur WSL 2**
 (Windows), dont la CLI est identique à celle de Docker.
 
@@ -18,6 +18,7 @@ Chaque labo existe en **trois langues** : français (`fr/`), néerlandais (`nl/`
 
 | # | Dossier | Concept | État |
 |---|---------|---------|------|
+| 00 | [`labs/00-fondamentaux-linux`](labs/00-fondamentaux-linux) | Fondamentaux Linux : noyau, processus, signaux, permissions, shell, ports | FR · NL · EN |
 | 01 | [`labs/01-conteneurs-et-architecture`](labs/01-conteneurs-et-architecture) | Qu'est-ce qu'un conteneur ; Docker vs Podman ; WSL 2 ; rootless | FR · NL · EN |
 | 02 | [`labs/02-images-et-registries`](labs/02-images-et-registries) | Images, tags, digests, couches, registries, noms complets | FR · NL · EN |
 | 03 | [`labs/03-cycle-de-vie-conteneurs`](labs/03-cycle-de-vie-conteneurs) | `run/stop/kill/rm`, PID 1, signaux, codes de sortie, conmon, restart | FR · NL · EN |
@@ -36,6 +37,11 @@ Chaque labo existe en **trois langues** : français (`fr/`), néerlandais (`nl/`
 3. Comparez avec `03-*.pdf`.
 4. Faites le labo pratique `04-*.pdf` au terminal, dans Ubuntu sous WSL 2 avec Podman
    (l'installation est décrite à l'étape 0 du labo 01).
+
+Le labo 00 est le seul à ne demander **ni Podman ni installation** : une distribution
+Ubuntu 24.04 sous WSL 2 suffit. Si les processus, les signaux, `chmod`, le `PATH` et
+les redirections vous sont déjà familiers, vous pouvez le survoler — mais faites ses
+questions pour vérifier.
 
 ## Régénérer les PDF
 

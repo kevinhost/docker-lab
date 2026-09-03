@@ -161,6 +161,7 @@ Chaque labo suppose acquis tout ce qui précède. Ordre non négociable.
 
 | # | Dossier | Concept central | Points clés |
 |---|---------|-----------------|-------------|
+| 00 | `00-fondamentaux-linux` | Les fondamentaux Linux prérequis | noyau vs userland, processus (PID, signaux, codes de sortie), UID/GID et permissions, montages et `/proc`, variables d'environnement et `PATH`, redirections/pipes, ports et `localhost`. **Aucun conteneur** : tourne sur Ubuntu 24.04/WSL nu, sans Podman ni installation |
 | 01 | `01-conteneurs-et-architecture` | Qu'est-ce qu'un conteneur | VM vs conteneur, namespaces & cgroups, architecture client/daemon/registry, image vs conteneur, anatomie de la CLI |
 | 02 | `02-images-et-registries` | Les images | tags, digests, layers, cache, Docker Hub, `pull/images/inspect/history/rmi`, `save/load`, prune |
 | 03 | `03-cycle-de-vie-conteneurs` | Faire tourner un conteneur | `run/ps/logs/exec/stop/kill/rm`, foreground vs detached, PID 1 et signaux, codes de sortie, restart policies |
