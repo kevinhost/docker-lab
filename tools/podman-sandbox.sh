@@ -50,7 +50,7 @@ CONF
     for p in $(cat cgroup.procs); do echo $p > init/cgroup.procs 2>/dev/null || true; done
     echo "+memory +pids +cpu +cpuset +io" > cgroup.subtree_control
     chown -R podman:podman user
-    sysctl -qw net.ipv4.ip_unprivileged_port_start=1024   # comme sur un vrai Linux : rootless => pas de port < 1024
+    echo 1024 > /proc/sys/net/ipv4/ip_unprivileged_port_start   # comme sur un vrai Linux : rootless => pas de port < 1024
     command -v ps >/dev/null || dnf -q -y install procps-ng iproute curl >/dev/null 2>&1 || true
   '
   echo "Bac a sable '$NAME' pret : $(run 'podman --version')"

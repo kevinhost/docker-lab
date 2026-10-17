@@ -33,7 +33,7 @@ Chaque labo existe en **trois langues** : français (`fr/`), néerlandais (`nl/`
 | 04 | [`labs/04-dockerfile`](labs/04-dockerfile) | Dockerfile, contexte, cache, `CMD`/`ENTRYPOINT`, `ARG`/`ENV`, Buildah | FR · NL · EN |
 | 05 | [`labs/05-multistage-et-optimisation`](labs/05-multistage-et-optimisation) | Multi-stage, images de base, distroless, cache mounts | FR · NL · EN |
 | 06 | [`labs/06-donnees-et-volumes`](labs/06-donnees-et-volumes) | Couche writable, volumes nommés, bind mounts, tmpfs, UID en rootless, sauvegarde PostgreSQL | FR · NL · EN |
-| 07 | `07-reseau` | Réseaux, DNS interne, `-p`, pasta | à écrire |
+| 07 | [`labs/07-reseau`](labs/07-reseau) | pasta, bridge, réseau user-defined et DNS, `-p` vs `EXPOSE`, reverse proxy nginx, pods | FR · NL · EN |
 | 08 | `08-configuration-et-secrets` | Variables, profils Spring, secrets | à écrire |
 | 09 | `09-docker-compose` | `podman compose` / Compose | à écrire |
 | 10 | `10-exploitation-et-bonnes-pratiques` | Exploitation, Quadlet, limites, `prune`, sécurité | à écrire |
