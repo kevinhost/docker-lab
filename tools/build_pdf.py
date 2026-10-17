@@ -15,7 +15,7 @@ Encadrés : une citation Markdown qui commence par une étiquette en gras
 (`> **Linux** — …`) devient un encadré typé. Étiquettes reconnues :
   - note  : À retenir / Onthouden / Remember
   - warn  : Piège / Valkuil / Pitfall
-  - podman: Podman
+  - podman: Podman, k3s (même style violet : « ce que le moteur utilisé fait différemment »)
   - domain: n'importe quelle autre étiquette (Linux, Java, Réseau, Windows / WSL,
             Sécurité, Histoire, Spring Boot, Angular, HTTP…) — affichée comme
             un petit label de domaine au-dessus du texte.
@@ -47,7 +47,7 @@ CHROME_CANDIDATES = [
 
 NOTE_LABELS = {"à retenir", "a retenir", "onthouden", "remember", "key point"}
 WARN_LABELS = {"piège", "piege", "valkuil", "pitfall", "attention", "let op", "warning"}
-PODMAN_LABELS = {"podman"}
+PODMAN_LABELS = {"podman", "k3s"}
 
 HTML_TEMPLATE = """<!DOCTYPE html>
 <html lang="{lang}">
