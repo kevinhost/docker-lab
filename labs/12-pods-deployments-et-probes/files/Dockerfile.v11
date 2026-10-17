@@ -1,0 +1,3 @@
+# api:1.1 : la meme API avec un autre message par defaut (pour voir un rolling update)
+FROM localhost/api:1.0
+ENV APP_MESSAGE="version 1.1"

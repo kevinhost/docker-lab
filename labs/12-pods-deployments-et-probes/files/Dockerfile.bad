@@ -1,0 +1,3 @@
+# api:bad : une image qui ne demarre pas (pour voir un rollout bloque et un rollback)
+FROM localhost/api:1.0
+ENTRYPOINT ["sh","-c","echo 'demarrage impossible : configuration manquante' ; exit 1"]
