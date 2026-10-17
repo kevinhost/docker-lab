@@ -1,0 +1,11 @@
+# Service ClusterIP : un nom DNS stable ("api") et une IP virtuelle devant les Pods app=api.
+apiVersion: v1
+kind: Service
+metadata:
+  name: api
+spec:
+  selector:
+    app: api
+  ports:
+    - port: 8080          # port du Service
+      targetPort: 8080    # port du conteneur

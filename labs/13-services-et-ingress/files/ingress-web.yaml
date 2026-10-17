@@ -1,0 +1,16 @@
+# Ingress : Traefik (fourni par k3s) route le trafic HTTP du noeud (port 80) vers le Service web.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: web
+spec:
+  rules:
+    - http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: web
+                port:
+                  number: 80

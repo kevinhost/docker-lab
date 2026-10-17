@@ -49,7 +49,7 @@ fournit `kubectl`, Traefik (Ingress), ServiceLB et la StorageClass `local-path`.
 |---|---------|---------|------|
 | 11 | [`labs/11-pourquoi-kubernetes`](labs/11-pourquoi-kubernetes) | Du Compose au cluster : architecture, modèle déclaratif, `kubectl`, premier Pod, image Podman dans k3s, passerelle `podman kube play` | FR · NL · EN |
 | 12 | [`labs/12-pods-deployments-et-probes`](labs/12-pods-deployments-et-probes) | Deployment → ReplicaSet → Pod, labels, scale, rolling update et rollback, readiness vs liveness, CrashLoopBackOff | FR · NL · EN |
-| 13 | `13-services-et-ingress` | ClusterIP / NodePort / LoadBalancer, CoreDNS, Ingress Traefik, chaîne web → api | à écrire |
+| 13 | [`labs/13-services-et-ingress`](labs/13-services-et-ingress) | Service ClusterIP/NodePort/LoadBalancer, CoreDNS, EndpointSlices et readiness, ServiceLB, Ingress Traefik, chaîne web → api | FR · NL · EN |
 | 14 | `14-configmaps-et-secrets` | ConfigMap, Secret, env vs fichiers montés, profils Spring | à écrire |
 | 15 | `15-stockage-et-statefulsets` | PV / PVC / StorageClass, StatefulSet Postgres, headless Service | à écrire |
 | 16 | `16-ressources-et-exploitation` | Namespaces, requests/limits, QoS, `kubectl top`, diagnostic, RBAC de base | à écrire |
