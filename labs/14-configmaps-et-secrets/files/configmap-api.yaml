@@ -1,0 +1,8 @@
+# Configuration non sensible de l'API : des cles/valeurs, injectees en variables d'environnement.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: api-config
+data:
+  APP_MESSAGE: "bonjour depuis une ConfigMap"
+  APP_PROFILE: "staging"

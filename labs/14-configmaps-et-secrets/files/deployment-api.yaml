@@ -1,0 +1,43 @@
+# L'API lit sa configuration dans la ConfigMap (envFrom) et le mot de passe de la base
+# dans le Secret, monte en fichier sous /run/secrets (convention _FILE du labo 08).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api
+  labels:
+    app: api
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: api
+  template:
+    metadata:
+      labels:
+        app: api
+    spec:
+      containers:
+        - name: api
+          image: localhost/api:1.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8080
+          envFrom:
+            - configMapRef:
+                name: api-config
+          env:
+            - name: DB_PASSWORD_FILE
+              value: /run/secrets/db/POSTGRES_PASSWORD
+          volumeMounts:
+            - name: db-secret
+              mountPath: /run/secrets/db
+              readOnly: true
+          readinessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8080
+            periodSeconds: 5
+      volumes:
+        - name: db-secret
+          secret:
+            secretName: db-secret
