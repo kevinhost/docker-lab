@@ -61,14 +61,19 @@ CONF
 }
 
 run() {
-  docker exec -u podman -w /home/podman -e HOME=/home/podman -e XDG_RUNTIME_DIR=/tmp/podman-run-1000 \
-    "$NAME" bash -lc 'mkdir -p /sys/fs/cgroup/user/shell; echo $$ > /sys/fs/cgroup/user/shell/cgroup.procs;
-      echo "+memory +pids +cpu +cpuset +io" > /sys/fs/cgroup/user/cgroup.subtree_control 2>/dev/null; '"$1"
+  # Le deplacement vers le cgroup delegue doit se faire en root (regle de l'ancetre commun),
+  # puis on redescend vers l'utilisateur podman qui herite du cgroup.
+  docker exec -e HOME=/home/podman -e XDG_RUNTIME_DIR=/tmp/podman-run-1000 -e CMD="$1" -w /home/podman \
+    "$NAME" bash -c 'mkdir -p /sys/fs/cgroup/user/shell && echo $$ > /sys/fs/cgroup/user/shell/cgroup.procs
+      echo "+memory +pids +cpu +cpuset +io" > /sys/fs/cgroup/user/cgroup.subtree_control 2>/dev/null
+      chown -R podman:podman /sys/fs/cgroup/user
+      exec runuser -u podman -- bash -lc "$CMD"'
 }
 
 shell() {
-  docker exec -it -u podman -w /home/podman -e HOME=/home/podman -e XDG_RUNTIME_DIR=/tmp/podman-run-1000 \
-    "$NAME" bash -lc 'mkdir -p /sys/fs/cgroup/user/shell; echo $$ > /sys/fs/cgroup/user/shell/cgroup.procs; exec bash'
+  docker exec -it -e HOME=/home/podman -e XDG_RUNTIME_DIR=/tmp/podman-run-1000 -w /home/podman \
+    "$NAME" bash -c 'mkdir -p /sys/fs/cgroup/user/shell && echo $$ > /sys/fs/cgroup/user/shell/cgroup.procs
+      chown -R podman:podman /sys/fs/cgroup/user; exec runuser -u podman -- bash -l'
 }
 
 hc_loop() {
@@ -84,8 +89,11 @@ chmod +x /home/podman/hc-loop.sh'
   if docker exec -u podman "$NAME" sh -c 'kill -0 $(cat /home/podman/hc-loop.pid 2>/dev/null) 2>/dev/null'; then
     echo "boucle healthcheck deja active dans $NAME"
   else
-    docker exec -d -u podman -e HOME=/home/podman -e XDG_RUNTIME_DIR=/tmp/podman-run-1000 "$NAME" \
-      bash -c 'nohup /home/podman/hc-loop.sh >/dev/null 2>&1 & echo $! > /home/podman/hc-loop.pid'
+    # Meme placement de cgroup que run() : sinon `podman healthcheck run` echoue depuis le cgroup racine.
+    docker exec -d -e HOME=/home/podman -e XDG_RUNTIME_DIR=/tmp/podman-run-1000 "$NAME" \
+      bash -c 'mkdir -p /sys/fs/cgroup/user/shell && echo $$ > /sys/fs/cgroup/user/shell/cgroup.procs
+        chown -R podman:podman /sys/fs/cgroup/user
+        exec runuser -u podman -- bash -c "nohup /home/podman/hc-loop.sh >/dev/null 2>&1 & echo \$! > /home/podman/hc-loop.pid"'
     echo "boucle healthcheck lancee dans $NAME"
   fi
 }

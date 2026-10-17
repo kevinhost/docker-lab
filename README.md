@@ -36,7 +36,7 @@ Chaque labo existe en **trois langues** : français (`fr/`), néerlandais (`nl/`
 | 07 | [`labs/07-reseau`](labs/07-reseau) | pasta, bridge, réseau user-defined et DNS, `-p` vs `EXPOSE`, reverse proxy nginx, pods | FR · NL · EN |
 | 08 | [`labs/08-configuration-et-secrets`](labs/08-configuration-et-secrets) | 12-factor, `-e` / `--env-file` / `ENV`, profils Spring, où un secret se voit, `podman secret`, secrets de build | FR · NL · EN |
 | 09 | [`labs/09-docker-compose`](labs/09-docker-compose) | `compose.yaml`, healthchecks et `depends_on`, `up`/`down`, override et `-f`, `.env`, limites de podman-compose | FR · NL · EN |
-| 10 | `10-exploitation-et-bonnes-pratiques` | Exploitation, Quadlet, limites, `prune`, sécurité | à écrire |
+| 10 | [`labs/10-exploitation-et-bonnes-pratiques`](labs/10-exploitation-et-bonnes-pratiques) | `logs`/`stats`/`events`, limites et OOM, `HEALTHCHECK` (`--format docker`), durcissement, registry privé, `prune`, Quadlet, CI/CD | FR · NL · EN |
 
 ### Partie 2 — Kubernetes (pratiqué avec k3s)
 
