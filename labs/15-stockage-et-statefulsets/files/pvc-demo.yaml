@@ -1,0 +1,30 @@
+# Une demande de stockage (PersistentVolumeClaim) : 100 Mi, en lecture-ecriture par un seul noeud.
+# La StorageClass par defaut de k3s (local-path) cree le volume a la premiere utilisation.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: demo-data
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 100Mi
+---
+# Un Pod jetable qui ecrit dans ce volume.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: writer
+spec:
+  containers:
+    - name: writer
+      image: docker.io/library/alpine
+      command: ["sh", "-c", "echo \"ecrit par $(hostname) le $(date)\" >> /data/journal.txt ; sleep 3600"]
+      volumeMounts:
+        - name: data
+          mountPath: /data
+  volumes:
+    - name: data
+      persistentVolumeClaim:
+        claimName: demo-data
