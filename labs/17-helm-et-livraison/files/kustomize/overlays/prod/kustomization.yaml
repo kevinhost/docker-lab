@@ -1,0 +1,21 @@
+# L'overlay prod : la base + ce qui change en production (namespace, replicas, tag d'image,
+# ressources, un label). Aucun fichier de la base n'est copie ni modifie.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: lab17-prod
+resources:
+  - namespace.yaml
+  - ../../base
+labels:
+  - pairs:
+      env: prod
+    includeSelectors: false
+    includeTemplates: true
+replicas:
+  - name: api
+    count: 3
+images:
+  - name: localhost/api
+    newTag: "1.1"
+patches:
+  - path: patch-resources.yaml

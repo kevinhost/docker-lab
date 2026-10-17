@@ -1,0 +1,29 @@
+# Valeurs par defaut du chart : tout ce qui change d'un environnement a l'autre est ici,
+# jamais dans les templates. Surchargees par -f autre-values.yaml ou --set cle=valeur.
+api:
+  image:
+    repository: localhost/api
+    tag: "1.0"
+    digest: ""              # si renseigne (sha256:...), remplace le tag : image immuable
+    pullPolicy: IfNotPresent
+  replicas: 2
+  message: "bonjour depuis Helm"
+  profile: "dev"
+  resources:
+    requests:
+      cpu: "100m"
+      memory: "64Mi"
+    limits:
+      memory: "256Mi"
+
+web:
+  image: docker.io/library/nginx:alpine
+  replicas: 1
+  ingress:
+    enabled: true
+    path: /
+
+db:
+  image: docker.io/library/postgres:16-alpine
+  password: "S3cr3t-pg"     # en entreprise : --set db.password=... depuis le coffre de la CI, jamais commite
+  storage: 500Mi

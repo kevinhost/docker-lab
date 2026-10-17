@@ -1,0 +1,6 @@
+# La base : la liste des manifestes "purs". Pas de valeurs, pas de templates.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - deployment-api.yaml
+  - service-api.yaml

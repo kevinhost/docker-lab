@@ -1,0 +1,16 @@
+# Patch "strategic merge" : seulement ce qu'on ajoute ou change par rapport a la base.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api
+spec:
+  template:
+    spec:
+      containers:
+        - name: api
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "128Mi"
+            limits:
+              memory: "512Mi"

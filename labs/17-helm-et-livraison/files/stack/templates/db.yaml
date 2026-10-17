@@ -1,0 +1,66 @@
+# PostgreSQL en StatefulSet avec Service headless (labo 15). Le volume survit a helm uninstall :
+# Helm ne supprime jamais les PVC creees par volumeClaimTemplates.
+apiVersion: v1
+kind: Service
+metadata:
+  name: db
+  labels:
+    {{- include "stack.labels" . | nindent 4 }}
+spec:
+  clusterIP: None
+  selector:
+    app: db
+  ports:
+    - port: 5432
+      targetPort: 5432
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: db
+  labels:
+    app: db
+    {{- include "stack.labels" . | nindent 4 }}
+spec:
+  serviceName: db
+  replicas: 1
+  selector:
+    matchLabels:
+      app: db
+  template:
+    metadata:
+      labels:
+        app: db
+    spec:
+      containers:
+        - name: postgres
+          image: {{ .Values.db.image }}
+          ports:
+            - containerPort: 5432
+          env:
+            - name: POSTGRES_PASSWORD_FILE
+              value: /run/secrets/db/POSTGRES_PASSWORD
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+            - name: db-secret
+              mountPath: /run/secrets/db
+              readOnly: true
+          readinessProbe:
+            exec:
+              command: ["pg_isready", "-U", "postgres"]
+            periodSeconds: 5
+      volumes:
+        - name: db-secret
+          secret:
+            secretName: db-secret
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: {{ .Values.db.storage }}

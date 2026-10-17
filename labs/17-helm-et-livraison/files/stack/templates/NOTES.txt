@@ -1,0 +1,8 @@
+Stack "{{ .Release.Name }}" installee dans le namespace {{ .Release.Namespace }} (revision {{ .Release.Revision }}).
+
+  API   : {{ .Values.api.replicas }} replica(s) de {{ .Values.api.image.repository }}:{{ .Values.api.image.tag }}, profil {{ .Values.api.profile }}
+  Web   : {{ .Values.web.replicas }} replica(s), Ingress {{ if .Values.web.ingress.enabled }}active sur {{ .Values.web.ingress.path }}{{ else }}desactive{{ end }}
+  Base  : PostgreSQL, volume de {{ .Values.db.storage }}
+
+Verifier : kubectl get pods -n {{ .Release.Namespace }}
+Tester   : curl -s http://localhost/api/ ; curl -s http://localhost/api/actuator/health

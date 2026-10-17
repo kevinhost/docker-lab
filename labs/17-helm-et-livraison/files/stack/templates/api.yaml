@@ -1,0 +1,65 @@
+# L'API : Deployment + Service. L'annotation checksum/config force un rolling update
+# quand la ConfigMap change (sinon les Pods garderaient l'ancienne config, labo 14).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api
+  labels:
+    app: api
+    {{- include "stack.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.api.replicas }}
+  selector:
+    matchLabels:
+      app: api
+  template:
+    metadata:
+      labels:
+        app: api
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+    spec:
+      containers:
+        - name: api
+          {{- if .Values.api.image.digest }}
+          image: "{{ .Values.api.image.repository }}@{{ .Values.api.image.digest }}"
+          {{- else }}
+          image: "{{ .Values.api.image.repository }}:{{ .Values.api.image.tag }}"
+          {{- end }}
+          imagePullPolicy: {{ .Values.api.image.pullPolicy }}
+          ports:
+            - containerPort: 8080
+          envFrom:
+            - configMapRef:
+                name: api-config
+          env:
+            - name: DB_PASSWORD_FILE
+              value: /run/secrets/db/POSTGRES_PASSWORD
+          volumeMounts:
+            - name: db-secret
+              mountPath: /run/secrets/db
+              readOnly: true
+          resources:
+            {{- toYaml .Values.api.resources | nindent 12 }}
+          readinessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8080
+            periodSeconds: 5
+      volumes:
+        - name: db-secret
+          secret:
+            secretName: db-secret
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: api
+  labels:
+    {{- include "stack.labels" . | nindent 4 }}
+spec:
+  selector:
+    app: api
+  ports:
+    - port: 8080
+      targetPort: 8080

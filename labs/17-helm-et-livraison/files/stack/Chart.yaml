@@ -1,0 +1,7 @@
+# Carte d'identite du chart : nom, version du chart (SemVer) et version de l'application.
+apiVersion: v2
+name: stack
+description: La stack web + api + db des labos (nginx, API Spring Boot simulee, PostgreSQL), packagee en chart Helm.
+type: application
+version: 0.1.0
+appVersion: "1.0"

@@ -1,0 +1,52 @@
+# Le front : nginx:alpine tel quel, configure par les ConfigMaps web-nginx et web-html.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web
+  labels:
+    app: web
+    {{- include "stack.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.web.replicas }}
+  selector:
+    matchLabels:
+      app: web
+  template:
+    metadata:
+      labels:
+        app: web
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+    spec:
+      containers:
+        - name: web
+          image: {{ .Values.web.image }}
+          ports:
+            - containerPort: 80
+          volumeMounts:
+            - name: nginx-conf
+              mountPath: /etc/nginx/conf.d
+              readOnly: true
+            - name: html
+              mountPath: /usr/share/nginx/html
+              readOnly: true
+      volumes:
+        - name: nginx-conf
+          configMap:
+            name: web-nginx
+        - name: html
+          configMap:
+            name: web-html
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: web
+  labels:
+    {{- include "stack.labels" . | nindent 4 }}
+spec:
+  selector:
+    app: web
+  ports:
+    - port: 80
+      targetPort: 80

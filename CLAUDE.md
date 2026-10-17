@@ -142,7 +142,7 @@ docker-lab/
 ├── tools/build_pdf.py         # Markdown -> HTML -> PDF (Chrome headless), encadrés typés
 ├── tools/lint_lang.py         # repère les calques et faux amis FR/NL/EN dans la prose
 ├── tools/podman-sandbox.sh    # Podman rootless de test dans un conteneur Docker privilégié
-├── tools/k3s-sandbox.sh       # k3s de test dans un conteneur Docker privilégié (up/run/import-image/replay)
+├── tools/k3s-sandbox.sh       # k3s de test dans un conteneur Docker privilégié (up/run/import-image/replay/install-helm/registry)
 ├── assets/pdf.css             # mise en page des PDF
 └── labs/
     ├── 01-conteneurs-et-architecture/
@@ -423,15 +423,19 @@ Ubuntu natif avec Docker Engine 29, **sans Podman, sans k3s et sans `sudo`**.
 - **Partie Kubernetes** : `tools/k3s-sandbox.sh` : l'image
   `docker.io/rancher/k3s:v1.34.1-k3s1` lancée `--privileged --hostname wsl-ubuntu …
   server --write-kubeconfig-mode 644`, avec `up / run / shell / copy-labs /
-  import-image / replay / down`. Le nœud est `Ready` en moins de 30 s. `import-image`
+  import-image / replay / install-helm / registry / down`. Le nœud est `Ready` en moins de 30 s. `import-image`
   fait le pont avec le bac à sable Podman (`podman save` d'un côté, import containerd
   de l'autre), comme l'apprenant le fera sur WSL. **Dans l'image rancher/k3s, `k3s ctr`
   et `k3s crictl` n'existent pas** : `replay script.sh` rejoue un script écrit pour WSL
   en traduisant `sudo k3s ctr` → `ctr --address /run/k3s/containerd/containerd.sock -n
   k8s.io`, `sudo k3s crictl` → `crictl --runtime-endpoint unix:///run/k3s/containerd/
   containerd.sock`, et `curl -s` → `wget -qO-` (pas de curl dans l'image). Pas de
-  `/root` ni de `curl` dans l'image ; pas de Helm (labo 17 : à télécharger comme
-  binaire). Ce que ce bac à sable **ne** reproduit **pas** : `systemctl` (pas de
+  `/root` ni de `curl` dans l'image ; pas de Helm : `install-helm` télécharge le
+  binaire officiel (checksum vérifié) dans le conteneur, comme l'apprenant le fait sur
+  WSL au labo 17. `registry` lance un `registry:2` dans le namespace réseau du
+  conteneur k3s : `localhost:5000` pour le nœud (k3s tire en HTTP sans
+  `registries.yaml`), `<ip>:5000` pour les `podman push --tls-verify=false` depuis le
+  bac à sable Podman — la ligne `localhost:5000` du labo est donc rejouée avec cette IP. Ce que ce bac à sable **ne** reproduit **pas** : `systemctl` (pas de
   service k3s ; `wsl --shutdown` se simule par `docker restart`), le script
   d'installation `get.k3s.io`, le noyau WSL, le forwarding `localhost` vers Windows,
   le nom de nœud réel. Ces points sont décrits « tels que sur WSL » et signalés. Les

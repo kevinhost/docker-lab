@@ -1,0 +1,20 @@
+# L'Ingress n'est rendu que si web.ingress.enabled vaut true (un environnement de test sans Traefik le desactive).
+{{- if .Values.web.ingress.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: web
+  labels:
+    {{- include "stack.labels" . | nindent 4 }}
+spec:
+  rules:
+    - http:
+        paths:
+          - path: {{ .Values.web.ingress.path }}
+            pathType: Prefix
+            backend:
+              service:
+                name: web
+                port:
+                  number: 80
+{{- end }}

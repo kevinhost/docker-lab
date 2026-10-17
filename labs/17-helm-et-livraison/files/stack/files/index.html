@@ -1,0 +1,12 @@
+<!doctype html>
+<html lang="fr">
+<head><meta charset="utf-8"><title>web</title></head>
+<body>
+  <h1>Angular (simule) - servi par nginx</h1>
+  <p>Appel de l'API via le proxy : <code>/api/actuator/health</code></p>
+  <pre id="out">...</pre>
+  <script>
+    fetch('/api/actuator/health').then(r => r.text()).then(t => document.getElementById('out').textContent = t);
+  </script>
+</body>
+</html>

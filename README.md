@@ -53,7 +53,7 @@ fournit `kubectl`, Traefik (Ingress), ServiceLB et la StorageClass `local-path`.
 | 14 | [`labs/14-configmaps-et-secrets`](labs/14-configmaps-et-secrets) | ConfigMap et Secret, variables vs fichiers montés, mise à jour à chaud, base64, nginx officiel configuré par ConfigMaps | FR · NL · EN |
 | 15 | [`labs/15-stockage-et-statefulsets`](labs/15-stockage-et-statefulsets) | PV / PVC / StorageClass `local-path`, StatefulSet PostgreSQL, Service headless, données qui survivent, sauvegarde | FR · NL · EN |
 | 16 | [`labs/16-ressources-et-exploitation`](labs/16-ressources-et-exploitation) | Requests/limits, QoS, `OOMKilled`/`Pending`, LimitRange/ResourceQuota, `kubectl top`/`debug`, RBAC, NetworkPolicy | FR · NL · EN |
-| 17 | `17-helm-et-livraison` | Helm, Kustomize, tags et digests, CI/CD vers le cluster, GitOps, k3s vs clusters managés | à écrire |
+| 17 | [`labs/17-helm-et-livraison`](labs/17-helm-et-livraison) | Chart Helm de la stack (`install/upgrade/rollback`, `values-prod.yaml`), Kustomize (base + overlay), tags et digests, registry → k3s, CI/CD et GitOps, k3s vs EKS/AKS/GKE/OpenShift | FR · NL · EN |
 
 ## Mode d'emploi
 
@@ -102,6 +102,8 @@ tools/k3s-sandbox.sh up
 tools/k3s-sandbox.sh import-image localhost/api:1.0
 tools/k3s-sandbox.sh run 'kubectl get nodes'
 tools/k3s-sandbox.sh replay script.sh      # sudo k3s ctr/crictl et curl traduits
+tools/k3s-sandbox.sh install-helm          # binaire Helm (labo 17), checksum vérifié
+tools/k3s-sandbox.sh registry              # registry:2 vu en localhost:5000 par le nœud
 ```
 
 ---

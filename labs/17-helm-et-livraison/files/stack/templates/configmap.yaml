@@ -1,0 +1,31 @@
+# Trois ConfigMaps : la config de l'API (depuis values.yaml) et les deux fichiers du front
+# (lus dans files/ du chart par .Files.Get : pas de copier-coller de nginx.conf dans un YAML).
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: api-config
+  labels:
+    {{- include "stack.labels" . | nindent 4 }}
+data:
+  APP_MESSAGE: {{ .Values.api.message | quote }}
+  APP_PROFILE: {{ .Values.api.profile | quote }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: web-nginx
+  labels:
+    {{- include "stack.labels" . | nindent 4 }}
+data:
+  default.conf: |
+{{ .Files.Get "files/nginx-proxy.conf" | indent 4 }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: web-html
+  labels:
+    {{- include "stack.labels" . | nindent 4 }}
+data:
+  index.html: |
+{{ .Files.Get "files/index.html" | indent 4 }}
