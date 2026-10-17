@@ -47,7 +47,7 @@ fournit `kubectl`, Traefik (Ingress), ServiceLB et la StorageClass `local-path`.
 
 | # | Dossier | Concept | État |
 |---|---------|---------|------|
-| 11 | `11-pourquoi-kubernetes` | Du Compose au cluster : architecture, modèle déclaratif, `kubectl`, premier Pod, passerelle `podman kube play` | à écrire |
+| 11 | [`labs/11-pourquoi-kubernetes`](labs/11-pourquoi-kubernetes) | Du Compose au cluster : architecture, modèle déclaratif, `kubectl`, premier Pod, image Podman dans k3s, passerelle `podman kube play` | FR · NL · EN |
 | 12 | `12-pods-deployments-et-probes` | Pod, labels, ReplicaSet, Deployment, rolling update, probes, images Podman dans k3s | à écrire |
 | 13 | `13-services-et-ingress` | ClusterIP / NodePort / LoadBalancer, CoreDNS, Ingress Traefik, chaîne web → api | à écrire |
 | 14 | `14-configmaps-et-secrets` | ConfigMap, Secret, env vs fichiers montés, profils Spring | à écrire |
@@ -92,9 +92,17 @@ tools/podman-sandbox.sh run 'podman run --rm alpine uname -r'
 tools/podman-sandbox.sh shell
 ```
 
-Pour la partie Kubernetes, `tools/k3s-sandbox.sh` (créé avec le labo 11) lance de la
-même façon l'image `rancher/k3s:v1.34.1-k3s1` en conteneur privilégié, avec `kubectl`,
-et importe les images construites dans le bac à sable Podman.
+Pour la partie Kubernetes, `tools/k3s-sandbox.sh` lance de la même façon l'image
+`rancher/k3s:v1.34.1-k3s1` en conteneur privilégié (nœud `wsl-ubuntu`, `kubectl`
+inclus), importe les images construites dans le bac à sable Podman et rejoue les
+scripts écrits pour WSL :
+
+```bash
+tools/k3s-sandbox.sh up
+tools/k3s-sandbox.sh import-image localhost/api:1.0
+tools/k3s-sandbox.sh run 'kubectl get nodes'
+tools/k3s-sandbox.sh replay script.sh      # sudo k3s ctr/crictl et curl traduits
+```
 
 ---
 

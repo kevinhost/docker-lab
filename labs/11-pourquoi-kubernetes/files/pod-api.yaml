@@ -1,0 +1,19 @@
+# Premier manifeste : un Pod qui fait tourner l'API du fil rouge.
+# L'image vient de Podman (labo 05) et doit etre importee dans k3s :
+#   podman save localhost/api:1.0 | sudo k3s ctr images import -
+apiVersion: v1
+kind: Pod
+metadata:
+  name: api
+  labels:
+    app: api
+spec:
+  containers:
+    - name: api
+      image: localhost/api:1.0
+      imagePullPolicy: IfNotPresent
+      ports:
+        - containerPort: 8080
+      env:
+        - name: APP_MESSAGE
+          value: "bonjour depuis kubernetes"

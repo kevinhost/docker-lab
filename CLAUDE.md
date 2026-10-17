@@ -142,7 +142,7 @@ docker-lab/
 ├── tools/build_pdf.py         # Markdown -> HTML -> PDF (Chrome headless), encadrés typés
 ├── tools/lint_lang.py         # repère les calques et faux amis FR/NL/EN dans la prose
 ├── tools/podman-sandbox.sh    # Podman rootless de test dans un conteneur Docker privilégié
-├── tools/k3s-sandbox.sh       # k3s de test dans un conteneur Docker privilégié (à créer au labo 11)
+├── tools/k3s-sandbox.sh       # k3s de test dans un conteneur Docker privilégié (up/run/import-image/replay)
 ├── assets/pdf.css             # mise en page des PDF
 └── labs/
     ├── 01-conteneurs-et-architecture/
@@ -420,18 +420,24 @@ Ubuntu natif avec Docker Engine 29, **sans Podman, sans k3s et sans `sudo`**.
   lance une boucle `podman healthcheck run` toutes les 5 s qui reproduit le
   comportement de WSL). Ces valeurs sont écrites « telles que sur WSL » dans les labos
   et signalées comme telles.
-- **Partie Kubernetes** : `tools/k3s-sandbox.sh` (**à créer au début du labo 11**, sur
-  le modèle de `podman-sandbox.sh`) : l'image `docker.io/rancher/k3s:v1.34.1-k3s1`
-  lancée `--privileged --hostname wsl-ubuntu … server --write-kubeconfig-mode 644`,
-  avec `up / run / shell / copy-labs / import-image / down`. Vérifié le 17/10/2026 :
-  le nœud est `Ready` en moins de 30 s sur cette machine. `import-image` fait le pont
-  avec le bac à sable Podman (`podman save` d'un côté, `k3s ctr images import -` de
-  l'autre), exactement comme l'apprenant le fera sur WSL. Helm (labo 17) est téléchargé
-  comme binaire dans le conteneur. Ce que ce bac à sable **ne** reproduit **pas** :
-  `systemctl` (pas de service k3s ; `wsl --shutdown` se simule par `docker restart`),
-  le script d'installation `get.k3s.io`, le noyau WSL, le forwarding `localhost` vers
-  Windows, le nom de nœud réel. Ces points sont décrits « tels que sur WSL » et
-  signalés.
+- **Partie Kubernetes** : `tools/k3s-sandbox.sh` : l'image
+  `docker.io/rancher/k3s:v1.34.1-k3s1` lancée `--privileged --hostname wsl-ubuntu …
+  server --write-kubeconfig-mode 644`, avec `up / run / shell / copy-labs /
+  import-image / replay / down`. Le nœud est `Ready` en moins de 30 s. `import-image`
+  fait le pont avec le bac à sable Podman (`podman save` d'un côté, import containerd
+  de l'autre), comme l'apprenant le fera sur WSL. **Dans l'image rancher/k3s, `k3s ctr`
+  et `k3s crictl` n'existent pas** : `replay script.sh` rejoue un script écrit pour WSL
+  en traduisant `sudo k3s ctr` → `ctr --address /run/k3s/containerd/containerd.sock -n
+  k8s.io`, `sudo k3s crictl` → `crictl --runtime-endpoint unix:///run/k3s/containerd/
+  containerd.sock`, et `curl -s` → `wget -qO-` (pas de curl dans l'image). Pas de
+  `/root` ni de `curl` dans l'image ; pas de Helm (labo 17 : à télécharger comme
+  binaire). Ce que ce bac à sable **ne** reproduit **pas** : `systemctl` (pas de
+  service k3s ; `wsl --shutdown` se simule par `docker restart`), le script
+  d'installation `get.k3s.io`, le noyau WSL, le forwarding `localhost` vers Windows,
+  le nom de nœud réel. Ces points sont décrits « tels que sur WSL » et signalés. Les
+  blocs d'un `04-*.md` qui contiennent `podman ` (sans `kubectl`) se rejouent dans le
+  bac à sable Podman, `podman save … | sudo k3s ctr images import -` via
+  `import-image`, le reste via `replay`.
 - Toute commande écrite dans un `04-*.md` doit avoir été **exécutée** dans le bac à
   sable correspondant (ou sur un vrai WSL), et les sorties citées doivent être les
   sorties réelles (tailles, statuts, messages d'erreur, colonnes de `kubectl get`).
