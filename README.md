@@ -52,7 +52,7 @@ fournit `kubectl`, Traefik (Ingress), ServiceLB et la StorageClass `local-path`.
 | 13 | [`labs/13-services-et-ingress`](labs/13-services-et-ingress) | Service ClusterIP/NodePort/LoadBalancer, CoreDNS, EndpointSlices et readiness, ServiceLB, Ingress Traefik, chaîne web → api | FR · NL · EN |
 | 14 | [`labs/14-configmaps-et-secrets`](labs/14-configmaps-et-secrets) | ConfigMap et Secret, variables vs fichiers montés, mise à jour à chaud, base64, nginx officiel configuré par ConfigMaps | FR · NL · EN |
 | 15 | [`labs/15-stockage-et-statefulsets`](labs/15-stockage-et-statefulsets) | PV / PVC / StorageClass `local-path`, StatefulSet PostgreSQL, Service headless, données qui survivent, sauvegarde | FR · NL · EN |
-| 16 | `16-ressources-et-exploitation` | Namespaces, requests/limits, QoS, `kubectl top`, diagnostic, RBAC de base | à écrire |
+| 16 | [`labs/16-ressources-et-exploitation`](labs/16-ressources-et-exploitation) | Requests/limits, QoS, `OOMKilled`/`Pending`, LimitRange/ResourceQuota, `kubectl top`/`debug`, RBAC, NetworkPolicy | FR · NL · EN |
 | 17 | `17-helm-et-livraison` | Helm, Kustomize, tags et digests, CI/CD vers le cluster, GitOps, k3s vs clusters managés | à écrire |
 
 ## Mode d'emploi
