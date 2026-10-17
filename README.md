@@ -77,6 +77,8 @@ questions pour vérifier.
 ```
 
 La source de vérité est le Markdown ; les PDF sont régénérés (Chrome headless).
+`python3 tools/lint_lang.py` repère les calques et faux amis (anglais → FR/NL,
+FR → NL/EN) dans la prose des trois langues.
 
 ## Vérifier les commandes sans Podman ni k3s installés
 

@@ -21,7 +21,7 @@ podman run --rm --entrypoint sh api-mono:1.0 -c 'ls /app; javac -version; ls ~/.
 
 ### Vraag 2 — Drie `FROM`s
 
-**Antwoord.** De **laatste** `FROM` levert de uiteindelijke image; de twee andere zijn tijdelijke omgevingen die op het einde van de build vernietigd worden (alleen hun cache blijft over). Verwijst geen enkele `COPY --from` (en geen latere `FROM`) naar de tweede stage, dan **bouwt Buildah ze helemaal niet**: ze wordt overgeslagen. Dat zie je in de uitvoer: de stages zijn genummerd `[1/3]`, `[2/3]`, `[3/3]`, en het nummer van de ongebruikte stage verschijnt nergens.
+**Antwoord.** De **laatste** `FROM` levert de uiteindelijke image; de twee andere zijn tijdelijke omgevingen die aan het einde van de build vernietigd worden (alleen hun cache blijft over). Verwijst geen enkele `COPY --from` (en geen latere `FROM`) naar de tweede stage, dan **bouwt Buildah ze helemaal niet**: ze wordt overgeslagen. Dat zie je in de uitvoer: de stages zijn genummerd `[1/3]`, `[2/3]`, `[3/3]`, en het nummer van de ongebruikte stage verschijnt nergens.
 
 **Waarom.** De engine leidt eerst uit de `--from`-verwijzingen de afhankelijkheidsgraaf tussen de stages af, en bouwt dan alleen wat naar het doel leidt (de laatste stage, of de stage van `--target`).
 
@@ -74,7 +74,7 @@ podman images --format '{{.Repository}} {{.Size}}' | grep -E 'web-multi|node'   
 
 **Antwoord.** De PDF-generatie leunt vrijwel zeker op een **native bibliotheek** (`.so`) die voor `glibc` gecompileerd is — lettertypen, rendering, compressie. Alpine levert `musl`: de loader weigert de bibliotheek, en Java gooit een `UnsatisfiedLinkError`. Het commando dat het verschil had blootgelegd: `ldd --version` in elke image (`musl libc` tegenover `GLIBC`). De migratie had getest moeten worden met de **echte workloads** (niet alleen `/actuator/health`), op een acceptatieomgeving, met een terugvalplan — en component per component beslist.
 
-**Waarom.** Een native bibliotheek is gebonden aan één specifieke `libc`; het is geen portable bytecode. Dat het twee weken duurde, is geen raadsel: de PDF-taak draait misschien alleen op het einde van de maand.
+**Waarom.** Een native bibliotheek is gebonden aan één specifieke `libc`; het is geen portable bytecode. Dat het twee weken duurde, is geen raadsel: de PDF-taak draait misschien alleen aan het einde van de maand.
 
 **Nuance.** Er zijn alternatieven: de image `eclipse-temurin:21-jre-ubi9-minimal` (Red Hat, `glibc`, ~100 MB), of `gcompat` op Alpine (fragiel). En het is geen zuiver Java-probleem: Python en Node met native modules trappen in exact dezelfde val.
 

@@ -1,6 +1,6 @@
 # Lab 01 — Praktijklab: isolatie met eigen ogen zien
 
-*Doel: elke bewering uit de theorie zelf experimenteel controleren. Op het einde heb je gezien dat een container een proces van je WSL-machine is, en dat de `root` van een rootless container… jij bent.*
+*Doel: elke bewering uit de theorie zelf experimenteel controleren. Aan het einde heb je gezien dat een container een proces van je WSL-machine is, en dat de `root` van een rootless container… jij bent.*
 
 **Vereisten** — Windows 10/11 met WSL 2 en een Ubuntu-distributie (22.04 of recenter). Voor dit lab zijn geen bestanden nodig. De getoonde uitvoer komt van Podman 5.8; vanaf Podman 4.9 zijn de commando's identiek, alleen kleine weergavedetails verschillen.
 

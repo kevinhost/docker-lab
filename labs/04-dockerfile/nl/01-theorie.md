@@ -18,7 +18,7 @@
 podman build -t mijn-api:1.0 .
 ```
 
-De `.` op het einde is geen versiering: dat is de **build context**, de map die de build mag lezen. Daar volgen twee harde regels uit:
+De `.` aan het einde is geen versiering: dat is de **build context**, de map die de build mag lezen. Daar volgen twee harde regels uit:
 
 - **Je kunt alleen kopiëren wat in de context staat.** `COPY ../secrets/sleutel.pem .` mislukt altijd: het bestand valt buiten de grens.
 - **De hele map hoort bij de context**, ook `.git/`, `node_modules/`, `target/`, logbestanden en lokale configuratie. Met `COPY . .` belandt dat allemaal in de image.

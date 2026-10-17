@@ -91,6 +91,39 @@ sous la traduction (ordre des mots, ponctuation, images), on réécrit le passag
   `final`). « Interlocuteur » ≠ `interlocutor` (dire `no one to talk to`). « Grille de
   lecture » ≠ `reading grid` (dire `mental model`, `frame`).
 
+### Calques de l'anglais interdits — en FR **et** en NL
+
+La documentation source (Docker, Podman, Kubernetes) est en anglais : le risque n'est
+pas seulement de calquer le FR en NL/EN, mais de calquer **l'anglais dans le FR** (et
+dans le NL). Le FR, version maîtresse, doit lui aussi se lire comme écrit nativement :
+on garde le **jargon** en anglais (*layer*, *registry*, *pod*…), jamais la **syntaxe**
+ni les faux amis anglais.
+
+- **FR** — interdits : *supporter* au sens de prendre en charge (dire « prend en
+  charge », « gère »), *librairie* (« bibliothèque »), *digital* (« numérique »),
+  *adresser un problème* (« traiter »), *faire du sens* (« avoir du sens »),
+  *versatile* (« polyvalent »), *confusant* (« déroutant »), *assumer que*
+  (« supposer que »), *opportunité* (« occasion »), *délivrer* (« livrer »),
+  *initier* (« lancer »), *dramatique* (« spectaculaire »), *au final*, *en charge de*,
+  et les verbes franglais (*checker*, *monitorer*, *updater*, *forwarder*, *setter*,
+  *customiser*). Faux amis à relire en contexte : *actually* ≠ « actuellement »,
+  *eventually* ≠ « éventuellement », *definitely* ≠ « définitivement », *globally* ≠
+  « globalement ». Pas de structures anglaises : « il est possible de », « dans le but
+  de », nominalisations en chaîne, *passif* systématique.
+- **NL** — interdits : *supporteren* (« ondersteunen »), *zin maken* (« logisch
+  zijn »), *adresseren* (« aanpakken »), *runnen* hors commande (« draaien »),
+  *checken* (« nagaan »), *dedicated* (« specifiek », « eigen »), *best practices* en
+  prose (« goede gewoonten » ou en italique comme terme). Faux amis : *actueel* ≠
+  *actually* (« eigenlijk »), *eventueel* ≠ *eventually* (« uiteindelijk »). Et les
+  gallicismes belges : *in functie van* (« afhankelijk van »), *op het niveau van*,
+  *ter hoogte van*, *op het einde* (« aan het einde »), *werkpost*, *verwittigen*,
+  *noteer dat* (« merk op dat »), *men* pour « on » (dire « je »).
+- **Vérification** : `python3 tools/lint_lang.py [labs/NN-*]` repère ces calques dans
+  la prose (hors blocs de code) et échoue s'il en trouve ; `--all` affiche aussi les
+  faux amis « à relire en contexte ». Le script n'est qu'un filet : la relecture de
+  chaque langue **sans la source à côté** reste obligatoire, et **tout calque repéré en
+  relecture est ajouté aux listes du script** (et à cette section).
+
 Plus, si nécessaire :
 
 - `files/` : fichiers de base fournis pour le labo pratique (Dockerfile, compose,
@@ -107,6 +140,7 @@ docker-lab/
 ├── README.md                  # sommaire + mode d'emploi
 ├── build.sh                   # génère tous les PDF
 ├── tools/build_pdf.py         # Markdown -> HTML -> PDF (Chrome headless), encadrés typés
+├── tools/lint_lang.py         # repère les calques et faux amis FR/NL/EN dans la prose
 ├── tools/podman-sandbox.sh    # Podman rootless de test dans un conteneur Docker privilégié
 ├── tools/k3s-sandbox.sh       # k3s de test dans un conteneur Docker privilégié (à créer au labo 11)
 ├── assets/pdf.css             # mise en page des PDF
@@ -415,4 +449,6 @@ Ubuntu natif avec Docker Engine 29, **sans Podman, sans k3s et sans `sudo`**.
       manifestes YAML passent `kubectl apply --dry-run=client -f`.
 - [ ] Section « Nettoyage » présente à la fin du labo pratique, avec `rm -f -t 0`
       (Docker) ou `kubectl delete namespace labNN` (Kubernetes).
+- [ ] `python3 tools/lint_lang.py labs/NN-*` ne signale aucun calque, et chaque langue a
+      été relue **sans la source à côté** (section 2).
 - [ ] Le `README.md` liste le labo.
