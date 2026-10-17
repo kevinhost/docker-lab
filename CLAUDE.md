@@ -414,7 +414,11 @@ Ubuntu natif avec Docker Engine 29, **sans Podman, sans k3s et sans `sudo`**.
   le noyau WSL (`uname -r` donne celui de l'hôte), `systemd` (cgroupManager =
   `cgroupfs`), la plage `/etc/subuid` d'Ubuntu (`100000:65536` — le bac à sable a
   `1001:64535`, donc `HUSER` d'un UID 1000 vaut `100999` sur WSL mais `1001` dans le
-  bac à sable), Quadlet. Ces valeurs sont écrites « telles que sur WSL » dans les labos
+  bac à sable), Quadlet, et les **HEALTHCHECK** (Podman rootless les planifie par
+  des timers systemd : sans systemd l'état reste `starting` et `depends_on:
+  condition: service_healthy` attend indéfiniment — `tools/podman-sandbox.sh hc-loop`
+  lance une boucle `podman healthcheck run` toutes les 5 s qui reproduit le
+  comportement de WSL). Ces valeurs sont écrites « telles que sur WSL » dans les labos
   et signalées comme telles.
 - **Partie Kubernetes** : `tools/k3s-sandbox.sh` (**à créer au début du labo 11**, sur
   le modèle de `podman-sandbox.sh`) : l'image `docker.io/rancher/k3s:v1.34.1-k3s1`

@@ -1,0 +1,9 @@
+# Lu AUTOMATIQUEMENT avec compose.yaml (developpement) : expose la base sur
+# le poste pour un client SQL, et monte le front en direct.
+services:
+  db:
+    ports:
+      - "127.0.0.1:5432:5432"
+  api:
+    environment:
+      APP_PROFILE: dev

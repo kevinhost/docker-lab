@@ -52,7 +52,7 @@ RULES: dict[str, list[tuple[str, str]]] = {
         (r"\bmonitor(e|er|ing|é|ée)\b", "« surveiller », « supervision »"),
         (r"\bcheck(e|er|ez|é|ée)\b", "« vérifier »"),
         (r"\bforward(e|er|é|ée)\b", "« transférer », « rediriger »"),
-        (r"\bupdat(e|er|é|ée)\b", "« mettre à jour »"),
+        (r"(?<!rolling )\bupdat(e|er|é|ée)\b", "« mettre à jour » (sauf le terme *rolling update*)"),
         (r"\bsett(e|er|é|ée)\b (la|le|une|un)", "« définir », « positionner »"),
         (r"\bau final\b", "« finalement », « en fin de compte »"),
         (r"\ben charge de\b", "« chargé de », « responsable de »"),

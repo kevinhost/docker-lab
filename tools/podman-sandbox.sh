@@ -8,6 +8,7 @@
 #   tools/podman-sandbox.sh run 'podman version'
 #   tools/podman-sandbox.sh shell         # shell interactif rootless (user "podman")
 #   tools/podman-sandbox.sh copy-labs     # recopie labs/ dans /home/podman/labs
+#   tools/podman-sandbox.sh hc-loop       # exécute les HEALTHCHECK toutes les 5 s (pas de systemd ici)
 #   tools/podman-sandbox.sh down          # supprime le bac à sable
 #
 # Le bac à sable reproduit une installation « apt install podman » sur Ubuntu/WSL :
@@ -15,7 +16,10 @@
 #   - unqualified-search-registries = ["docker.io"]
 #   - cgroup v2 délégué (les limites --memory et `podman stats` fonctionnent)
 # Ce qui n'est PAS reproduit : le noyau WSL (uname -r), systemd (cgroupManager
-# vaut cgroupfs au lieu de systemd), Quadlet.
+# vaut cgroupfs au lieu de systemd), Quadlet, et les HEALTHCHECK : Podman rootless
+# les planifie avec des timers systemd ; sans systemd, l'état reste "starting".
+# `hc-loop` lance une boucle qui fait `podman healthcheck run` sur chaque conteneur
+# toutes les 5 s, ce qui reproduit le comportement observé sur WSL (systemd=true).
 set -euo pipefail
 
 NAME=podlab
@@ -67,6 +71,25 @@ shell() {
     "$NAME" bash -lc 'mkdir -p /sys/fs/cgroup/user/shell; echo $$ > /sys/fs/cgroup/user/shell/cgroup.procs; exec bash'
 }
 
+hc_loop() {
+  docker exec -u podman "$NAME" sh -c 'cat > /home/podman/hc-loop.sh <<"EOS"
+#!/bin/bash
+# Remplace les timers systemd : execute le HEALTHCHECK de chaque conteneur toutes les 5 s.
+while true; do
+  for c in $(podman ps -q 2>/dev/null); do podman healthcheck run "$c" >/dev/null 2>&1; done
+  sleep 5
+done
+EOS
+chmod +x /home/podman/hc-loop.sh'
+  if docker exec -u podman "$NAME" sh -c 'kill -0 $(cat /home/podman/hc-loop.pid 2>/dev/null) 2>/dev/null'; then
+    echo "boucle healthcheck deja active dans $NAME"
+  else
+    docker exec -d -u podman -e HOME=/home/podman -e XDG_RUNTIME_DIR=/tmp/podman-run-1000 "$NAME" \
+      bash -c 'nohup /home/podman/hc-loop.sh >/dev/null 2>&1 & echo $! > /home/podman/hc-loop.pid'
+    echo "boucle healthcheck lancee dans $NAME"
+  fi
+}
+
 copy_labs() {
   docker exec "$NAME" rm -rf /home/podman/labs
   docker cp "$ROOT/labs" "$NAME":/home/podman/labs
@@ -79,6 +102,7 @@ case "${1:-}" in
   run) run "${2:?commande manquante}" ;;
   shell) shell ;;
   copy-labs) copy_labs ;;
+  hc-loop) hc_loop ;;
   down) docker rm -f "$NAME" >/dev/null && echo "Bac a sable supprime." ;;
   *) sed -n '2,20p' "$0"; exit 1 ;;
 esac

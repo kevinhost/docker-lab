@@ -1,0 +1,12 @@
+# Variante production : a combiner explicitement
+#   podman compose -f compose.yaml -f compose.prod.yaml up -d
+# Pas de port pour la base, redemarrage automatique, profil prod.
+services:
+  db:
+    restart: unless-stopped
+  api:
+    restart: unless-stopped
+    environment:
+      APP_PROFILE: prod
+  web:
+    restart: unless-stopped
